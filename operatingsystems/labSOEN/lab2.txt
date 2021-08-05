@@ -1,0 +1,163 @@
+Here are some possible solutions for the exercises in the second lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Write the command that recursively traverses the given directory as an argument and displays the permissions of all files and subdirectories encountered.
+      (Hint: use the find command with the status command call action, or the equivalent formatted display action.)
+
+Solutions with the format display action:
+
+find arg_director -printf "% m:% p \ n" (specifier% m: displays permissions in octal)
+
+find arg_director -printf% M \: \% p \\ n (specifier% M: displays permissions in symbolic notation)
+
+Or, with the general action -exec to call the state command:
+
+find arg_director -exec status --format = "% a% n" \ {} \; (specifier% a: displays permissions in octal)
+
+find arg_director -exec status --format = "% A% n" \ {} \; (specifier% A: displays permissions in symbolic notation)
+
+Note: pay attention to the word that describes the format, it must not contain unprotected spaces!
+(Only the first word after -printf is considered as the value for the -printf action, and similar to the state command.)
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Write the command that displays for all files in the given directory as an argument on the command line, files whose names start or
+      ends with the letter 'a', the following properties: file name, last modified date and file size in Kbytes.
+      (Hint: use the find command and with the option to alternatively combine several search criteria by name, and on the action side
+      with the -printf option with the appropriate parameters.)
+
+find arg_director -name "a *" -printf "% p:% t:% k KB \ n" -or -name "* a" -printf "% p:% t:% k KB \ n"
+
+Or, more condensed, by forcing the precedence of evaluating options using parentheses:
+
+find arg_director \ (-name "a *" -o -name "* a" \) -printf "% p:% t:% k KB \ n"
+
+Remarks:
+
+1) The operator -o or -or is used to combine several search criteria that must be met disjunctively (i.e., it must not be that
+all must be true at the same time, but only at least one of them must be true).
+
+2) Using parentheses, several search criteria can be grouped to specify once, in addition to parentheses, the action to be performed.
+
+3) Pay attention to special characters * {}; () which must be protected in order to be read as such by the find command (otherwise, unprotected, interpret them
+the bash interpreter before executing the find command, according to the special meaning they have - see details about this in the courses).
+(Note: in the case of the * character, it will remain unchanged after interpretation by bash only if it does not identify any file that
+match the template in which the * character is used).
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write the command that sorts the lines of text in / etc / passwd in descending order, and the sort result is saved in the output.txt file.
+      (Hint: use the sort command with the two options that match the requirements in the statement.)
+
+sort -r / etc / passwd -o output.txt
+
+Or, other possible combinations of specification of parameters (see the observation after Ex.1 in laboratory # 1):
+
+sort / etc / passwd -r -o output.txt
+
+sort / etc / passwd -o output.txt -r
+
+sort -r -o output.txt / etc / passwd
+
+... etc., but NOT the forms: sort / etc / passwd -o -r output.txt OR sort -r -o / etc / passwd output.txt
+
+Another, more general solution, assuming that sort would not have had the -o option: we can use standard normal output redirection:
+
+sort -r / etc / passwd> output.txt
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 Write the command to sort the lines of text in the / etc / passwd file by UID.
+      (Hint: use the sort command with three options: the numeric sort option, the field 3 key sort option, and
+      the option to set the separator between fields.)
+
+sort -n -t: -k3 / etc / passwd
+
+Or, other possible combinations of specifying parameters:
+
+sort / etc / passwd -t: -k3 -n
+
+sort --numeric-sort / etc / passwd --key = 3 -t:
+
+... and so on.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 Write the command that displays all files and directories, as well as the access rights associated with them,
+      located in the given directory as an argument on the command line, for which the owner group has read and execute rights.
+
+find arg_director -perm -g + rx -printf "% p:% m \ n"
+
+This time we can't use the form: find arg_director -perm / g + rx -printf "% p:% m \ n"
+Note: this form was correct if the statement required the owner's group to have read OR execute rights (instead of AND).
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Write the command that displays all the normal type files (i.e., regular files) that you have in your account and
+      which have been changed in the last week, together with access rights and the date of the last change.
+
+find ~ -type f -mtime -7 -printf "% p:% m:% t \ n"
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 Write the command that displays all the files found starting from the given directory as an argument in the command line, recursive path,
+      for which the owner of the file has the right to execute on it, as well as the date of the last access to the file and its size in Kbytes.
+
+find arg_director -perm / u + x -type f -printf "% p:% a:% k KB \ n"
+
+find arg_director -perm -u + x -type f -printf "% p:% a:% k KB \ n"
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.8 Write the command to display all C / C ++ source programs (i.e., files with .c, .cpp and .h extensions)
+      which you hold in your account, along with their lengths (i.e., their dimensions in bytes) and the date of the last change.
+      (Hint: use the find command with three -name options in the search criteria, and in the actions part with the -printf option with the appropriate parameters.
+      To test the command, create some C / C ++ files in the home directory, possibly by copying some programs from the labs
+      programming in the first semester.)
+
+find ~ \ (-name "* .c" -o -name "* .cpp" -or -name "* .h" \) -printf "% p:% s bytes:% t \ n"
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.9 Write the command that identifies all C ++ source programs (i.e., .cpp files) that you have (only) in
+      home directory and, if their size is less than 5 Kbytes, try to compile them using the g ++ command.
+      The standard error output for the compile command will be redirected to an errors.txt file.
+      (Hint: use the find command with the -name and -size options in the search criteria, and in the actions part with the execute option
+      -exec g ++ ... 2 >> errors.txt. To test the command, create some C ++ files in the home directory, possibly by copying some examples
+      of programs from the programming laboratories of the first semester.)
+
+find ~ -maxdepth 1 -name "* .cpp" -size -5k -exec g ++ \ {} 2 >> errors.txt \;
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.10 Write the command that displays all the web page files (i.e., files with .htm, .html, .php, .css extensions) that you have in your account,
+       together with their lengths (i.e., their dimensions in Kbytes) and the date of the last modification.
+
+find ~ / html \ (-name "* .htm" -o -name "* .html" -or -name "* .php" -o -name "* .css" \) -printf "% p:% k KB:% t \ n "
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.11 Write the command that deletes all temporary files in the account (i.e. from the home directory, and including those in its subdirectories).
+       Explanation: Temporary files are those whose names end in ~ or .bak. These are files created by various text editors in
+       which saves the penultimate version, i.e. the one before the last edit, the original file (i.e. the file with that name without ~ or .bak).
+       (Hint: use the find command with the rm command call action, or the equivalent delete action.)
+
+Solutions with the deletion action:
+
+find ~ -name "* .bak" -delete -o -name "* ~" -delete
+
+find ~ \ (-name \ *. bak -or -name \ * ~ \) -delete
+
+Or, with the general action -exec to call the rm command:
+
+find ~ "(" -name "* .bak" -o -name "* ~" ")" -exec rm "{}" ";"
+
+find ~ \ (-name \ *. bak -o -name \ * ~ \) -exec rm \ {} \;
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

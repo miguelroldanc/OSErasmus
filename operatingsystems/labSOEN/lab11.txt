@@ -1,0 +1,455 @@
+Here are some possible solutions for the exercises in the 11th lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Try to solve it yourself, using the following sketch that describes the steps to be implemented:
+
+/ * Outline of the program for exercise 1:
+
+- The initial process P0 will create three anonymous channels, channel_P0toP1, channel_P1toP2 and channel_P2toP0
+- Then P0 will create the two child processes, P1 and P2 (thus, they will 'inherit' the descriptors for the three channels),
+  obviously the second call fork () for the creation of the son P2 will be put on the branch of the father from the first call fork ()
+- After the creation of the sons (moment from which all three processes will be executed in parallel), P0 will continue as follows:
+  read the contents of the data.txt file and write it to channel_P0toP1
+- Finally, P0 will wait for the read call to read the number transmitted on channel_P2toP0 and will display it
+
+- After creation, P1 will execute the following loop:
+  1. read 1 byte from channel_P0toP1 and,
+  2. only if it is lowercase, write that byte in channel_P1toP2
+  Note: the loop will end when P1 "reads" the EOF from channel_P0toP1.
+
+- After creation, P2 will execute the following loop:
+  1. read 1 byte (a lowercase letter) from channel_P1toP2
+  2. updates the occurrence vector and the total specified in the statement, based on the letter read
+  Note: the loop will end when P2 "reads" the EOF from channel_P1toP2.
+  3. write the total (an integer) in channel_P2toP0
+
+  Note: the termination of the loops in P1 and P2 implies that P1, respectively P2, to "read" the EOF from the corresponding channel,
+  i.e. the fact that there are no more "writers" for that channel.
+  So make sure of this!
+  The simplest way: each of the 3 processes to close each of the 6 ends of the 3 channels, as early as possible
+  (i.e. from the moment when he will no longer need that end in the future).
+* /
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Try to solve it yourself, using the following sketch that describes the steps to be implemented:
+
+/ * Outline of the program for exercise 2:
+
+- The initial process P0 will create two anonymous channels, canal_P1toP2 and canal_P2toP1, and will write 1 byte (any) in canal_P2toP1
+- Then P0 will create the two child processes, P1 and P2 (thus, they will 'inherit' the descriptors for the two channels)
+- After creating the sons, sleep (1) and close all the ends to the two channels
+- Finally, P0 can wait for the completion of the two sons, for aesthetic reasons (to display the prompt only after their completion)
+
+- After creation, P1 will execute the following loop:
+  1. read 1 byte (any) from channel_P2toP1 (here it will wait, via the read () call, until it finds 1 byte in the channel)
+  2. reads a new line from the name.txt file and displays it on the screen
+  3. write 1 byte (any) in channel_P1toP2
+  Note: the end of the loop will be done when P1 reaches the EOF in name.txt, or when the byte read from channel_P2toP1 has a special value that indicates that P2 has finished traversing its file.
+
+- After creation, P2 will execute the following loop:
+  1. read 1 byte (any) from channel_P1toP2 (here it will wait, via the read () call, until it finds 1 byte in the channel)
+  2. read a new line from the first name.txt file and display it on the screen
+  3. write 1 byte (any) in channel_P2toP1
+  Note: the loop will end when P2 reaches the EOF in the first name.txt, or when the byte read from channel_P1toP2 has a special value indicating that P1 has finished traversing its file.
+* /
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Solutions for some of the additional exercises.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write a C program that determines the capacity of an anonymous channel.
+      (Hint: set the non-blocking character for the end of writing in the channel and then write in it until it is full, at the same time counting
+      how many bytes were written.)
+
+
+Here is a possible solution:
+
+dimension_pipe.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <errno.h>
+
+int main (void)
+{
+   int p [2], dimension;
+   char ch = '0';
+
+   / * create pipe * /
+   if (-1 == pipe (p))
+   {
+      perror ("Error creating internal channel. Cause of error");
+      exit (1);
+   }
+
+   / * non-blocking behavior setting for write end * /
+   if (-1 == fcntl (p [1], F_SETFL, O_NONBLOCK))
+   {
+      perror ("Error setting non-blocking. Cause of error");
+      exit (2);
+   }
+
+   dimension = 0;
+   printf ("I'm starting to fill the internal channel ... \ n");
+
+   while (1)
+   {
+      if (-1 == write (p [1], & ch, 1))
+      {
+         perror ("\ nError (possible pipe filling?). Cause of error");
+         fprintf (stderr, "errno =% d \ n", errno);
+         if (errno == EAGAIN)
+         {
+             fprintf (stderr, "Indeed, the cause of the error is channel filling! \ n");
+             break;
+         }
+         else
+         {
+             fprintf (stderr, "The cause of the error is other than filling the channel! \ n");
+             exit (3);
+         }
+      }
+      else
+      {
+         ++ dimensions;
+         if (dimension% 1024 == 0) {printf ("% d Ko ...", dimension / 1024); fflush (stdout); usleep (50,000); }
+      }
+   }
+
+   printf ("The capacity of an internal channel is% d bytes. \ n", size);
+   return 0;
+}
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4. Try to solve it yourself.
+
+Note: if you fail, you can consult the solution available at http://profs.info.uaic.ro/~vidrascu/SO/cursuri/C-programs/pipe/suma_pipes.c,
+with the observation that that program is the solution for a similar problem ex.4, but in which only two worker processes are used.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 Write a program C that "simulates" the chained command:
+      UNIX> grep / bin / bash / etc / passwd | cut -d, -f1
+      Requirement: For the execution of simple commands in the chain, exec () system calls will be used and not system () calls.
+      (Hint: use two processes, one to execute the grep command with exec () and the other to use the cut command. Before exec () calls,
+      you will need to use an anonymous channel and how to get the standard I / O redirect using the after () or after2 () primitives to
+      connect the standard output from the first process to the standard input of the second process.)
+
+
+Here is a possible solution:
+
+lab10_ex5.c:
+=============
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+
+int main ()
+{
+    pid_t pid;
+    int p [2];
+
+    if (-1 == pipe (p))
+    {
+       fprintf (stderr, "Error: unable to create internal channel, errno =% d \ n", errno);
+       perror ("Cause of error");
+       exit (1);
+    }
+
+    if (-1 == (pid = fork ()))
+    {
+        perror ("Error: could not create son. Cause of error");
+        exit (2);
+    }
+
+    if (pid == 0)
+    {
+        if (-1 == dup2 (p [1], 1))
+        {
+            perror ("Error: redirecting standard output to son failed. Cause of error");
+            exit (3);
+        }
+
+        execlp ("grep", "grep", "/ bin / bash", "/ etc / passwd", NULL);
+        perror ("Error in execlp () in son. Cause of error");
+        exit (4);
+    }
+    else
+    {
+        close (p [1]); // required to finish executing the cut command (by reading the EOF from the channel)
+
+        if (-1 == dup2 (p [0], 0))
+        {
+            perror ("Error: redirecting standard parent entry failed. Cause of error");
+            exit (5);
+        }
+
+        execlp ("cut", "cut", "- d,", "- f1", NULL);
+        perror ("Error in execlp () in parent. Cause of error");
+        exit (6);
+    }
+
+    return 0;
+}
+
+Note (valid for both issue 5 and issue 6):
+after launching the running program, the bash interpreter will re-display the prompt immediately after the execution of the initial process (the one
+in the foreground), even if the executions of the processes may not have been completed.
+Therefore, in order to ensure that the prompt is always displayed at the end of the execution of the whole program, it is sufficient that the initial
+which creates the processes required for chain commands) to be responsible for the execution (via execlp) of the last command in the command chain
+specified in the problem statement.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Generalization of exercise 5 above:
+      a) Write a C program that "simulates", using exec () and not system () calls, the chained command:
+      UNIX> grep / bin / bash / etc / passwd | cut -d, -f1 | sort -t: -k 3.3 -n
+      (Hint: similar solution as in the training exercise mentioned above, only that 3 processes will be needed, one for each
+      simple command from the chained command above, and 2 anonymous channels for making the chains.)
+
+
+i) Here is a first solution:
+
+lab10_ex6a.c:
+==============
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+
+int main ()
+{
+    pid_t pid1, pid2;
+    int p [2], q [2];
+
+    if (-1 == pipe (p))
+    {
+       fprintf (stderr, "Error: can't create first internal channel, errno =% d \ n", errno);
+       perror ("Cause of error");
+       exit (1);
+    }
+
+    if (-1 == (pid1 = fork ()))
+    {
+        perror ("Error: could not create first son. Cause of error");
+        exit (2);
+    }
+
+    if (pid1 == 0)
+    {
+if (-1 == pipe (q))
+{
+fprintf (stderr, "Error: can't create second internal channel, errno =% d \ n", errno);
+perror ("Cause of error");
+exit (1);
+}
+
+if (-1 == (pid2 = fork ()))
+{
+perror ("Error: could not create second son process. Cause of error");
+exit (2);
+}
+
+if (pid2 == 0)
+{
+if (-1 == dup2 (q [1], 1))
+{
+perror ("Error: redirecting standard output to second process son failed. Cause of error");
+exit (3);
+}
+
+execlp ("grep", "grep", "/ bin / bash", "/ etc / passwd", NULL);
+perror ("Error in execlp () in second process son. Cause of error");
+exit (4);
+}
+else
+{
+close (q [1]); // necessary to finish the execution of the cut command (by reading the EOF from the channel)
+
+if (-1 == dup2 (q [0], 0))
+{
+perror ("Error: redirecting standard input to first child failed. Cause of error");
+exit (5);
+}
+
+if (-1 == dup2 (p [1], 1))
+{
+perror ("Error: redirecting standard output to first child failed. Cause of error");
+exit (6);
+}
+
+execlp ("cut", "cut", "- d,", "- f1", NULL);
+perror ("Error in execlp () in first child. Cause of error");
+exit (7);
+}
+
+    }
+    else
+    {
+        close (p [1]); // necessary to finish the execution of the sort command (by reading the EOF from the channel)
+
+        if (-1 == dup2 (p [0], 0))
+        {
+            perror ("Error: redirecting standard parent entry failed. Cause of error");
+            exit (8);
+        }
+
+        execlp ("sort", "sort", "- t:", "- k", "3,3", "- n", NULL);
+        perror ("Error in execlp () in parent. Cause of error");
+        exit (9);
+    }
+
+    return 0;
+}
+
+
+ii) It is relatively difficult to generalize the above solution idea for increasingly long command chains.
+Another idea, much simpler for chains of any number of commands, is to "assemble" the chain in a generic program, as in the following.
+
+Here is a second solution to problem 6, a): the solution consists of 2 source C programs, namely:
+
+1) lab10_ex6a_s2-1.c is the generic program that executes a chain of two commands (i.e. a program similar to the one in problem 5), customized
+here for the chain consisting of the grep command and the command represented by the rest of the command chain (basically, recursive call):
+
+lab10_ex6a_s2-1.c:
+==================
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+
+int main ()
+{
+    pid_t pid;
+    int p [2];
+
+    if (-1 == pipe (p))
+    {
+       fprintf (stderr, "Error: unable to create internal channel, errno =% d \ n", errno);
+       perror ("Cause of error");
+       exit (1);
+    }
+
+    if (-1 == (pid = fork ()))
+    {
+        perror ("Error: could not create son. Cause of error");
+        exit (2);
+    }
+
+    if (pid == 0)
+    {
+        if (-1 == dup2 (p [1], 1))
+        {
+            perror ("Error: redirecting standard output to son failed. Cause of error");
+            exit (3);
+        }
+
+        execlp ("grep", "grep", "/ bin / bash", "/ etc / passwd", NULL);
+        perror ("Error in execlp () in son. Cause of error");
+        exit (4);
+    }
+    else
+    {
+        close (p [1]); // necessary to finish the execution of the cut command (by reading the EOF from the channel)
+
+        if (-1 == dup2 (p [0], 0))
+        {
+            perror ("Error: redirecting standard parent entry failed. Cause of error");
+            exit (5);
+        }
+
+        execl ("lab10_ex6a_s2-2", "lab10_ex6a_s2-2", NULL);
+        perror ("Error in execl () in parent. Cause of error");
+        exit (6);
+    }
+
+    return 0;
+}
+
+2) lab10_ex6a_s2-2.c is the generic program that executes a chain of two commands (i.e. a program similar to the one in problem 5), customized
+here for the chain consisting of the cut command and the sort command (basically, the end of the recursion):
+
+lab10_ex6a_s2-2.c:
+==================
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+
+int main ()
+{
+    pid_t pid;
+    int p [2];
+
+    if (-1 == pipe (p))
+    {
+       fprintf (stderr, "Error: unable to create internal channel, errno =% d \ n", errno);
+       perror ("Cause of error");
+       exit (1);
+    }
+
+    if (-1 == (pid = fork ()))
+    {
+        perror ("Error: could not create son. Cause of error");
+        exit (2);
+    }
+
+    if (pid == 0)
+    {
+        if (-1 == dup2 (p [1], 1))
+        {
+            perror ("Error: redirecting standard output to son failed. Cause of error");
+            exit (3);
+        }
+
+        execlp ("cut", "cut", "- d,", "- f1", NULL);
+        perror ("Error in execlp () in son. Cause of error");
+        exit (4);
+    }
+    else
+    {
+        close (p [1]); // necessary to finish the execution of the cut command (by reading the EOF from the channel)
+
+        if (-1 == dup2 (p [0], 0))
+        {
+            perror ("Error: redirecting standard parent entry failed. Cause of error");
+            exit (5);
+        }
+
+        execlp ("sort", "sort", "- t:", "- k", "3,3", "- n", NULL);
+        perror ("Error in execlp () in parent. Cause of error");
+        exit (6);
+    }
+
+    return 0;
+}
+
+Observation:
+This second solution, recursive, has the advantage that it can be applied very easily to any chain of commands:
+for a chain of N commands, N-1 instances of the generic program from problem 5 must be written, with each instance
+customized accordingly by changing only the two lines of code containing the execl () / execlp () calls.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7. Try to solve it yourself.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

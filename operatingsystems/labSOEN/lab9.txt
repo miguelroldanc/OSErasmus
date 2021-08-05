@@ -1,0 +1,335 @@
+Here are some possible solutions for the exercises in the 9th lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1. Try to solve it yourself.
+
+The idea is to correctly implement a "ping-pong" synchronization mechanism,
+i.e. "now it's your turn - now it's my turn - now it's your turn - now it's my turn - etc.", using communications via a file.
+(Note: later we will resume the idea using communication channels, respectively signals.)
+
+Here is a possible solution template (all you have to do is implement the functions specified in the program):
+
+lab9_ex1.c:
+============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / types.h>
+
+void dialog_tata ()
+{// TODO: to implement the dialogue loop for dad
+
+  // two nested loops, according to the indications given in the laboratory ...
+}
+
+void dialog_son ()
+{// TODO: to implement the dialogue loop for the son
+
+  // two nested loops, according to the indications given in the laboratory ...
+}
+
+int main ()
+{
+  pid_t pid_fiu;
+
+  / * create a child process * /
+  if (-1 == (pid_fiu = fork ()))
+  {
+    perror ("Error on fork"); return 1;
+  }
+
+  / * branch of execution * /
+  if (pid_fiu == 0)
+  {/ * code area executed only by son * /
+    printf ("\ n [P1] Son process, with PID:% d. \ n", getpid ());
+    dialog_son ();
+  }
+  else
+  {/ * code area executed only by parent * /
+    printf ("\ n [P0] Father process, with PID:% d. \ n", getpid ());
+    dialog_tata ();
+  }
+
+  / * common code area, executed by both processes * /
+  printf ("End of process execution% s. \ n \ n", pid_fiu == 0? "fiu": "parent");
+  return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2. Try to solve it yourself.
+
+The idea is to implement a parallel / distributed calculation on the "supervisor-workers" (or "master-slaves") model. Another, more elaborate example of achievement
+of a calculation of this form, from which you can be inspired, you can find it in the directory with the programs given as an example in the practical lesson about the fork () call.
+
+Here is a possible solution template (all you have to do is implement the functions specified in the program):
+
+lab9_ex2.c:
+============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+
+void calcul_tata ()
+{// TODO: to implement the calculation performed by my father, according to the indications given in the laboratory ...
+
+}
+
+void generare_fiu1 ()
+{// TODO: to implement the generation of operands by son 1, according to the indications given at the laboratory ...
+
+}
+
+void generate_son2 ()
+{// TODO: to implement the generation of operators by son 2, according to the indications given at the laboratory ...
+
+}
+
+
+int main ()
+{
+  pid_t pid_fiu1, pid_fiu2, N;
+
+  printf ("Give the integer N:"); scanf ("% d", & N);
+
+  / * create the process son 1 * /
+  if (-1 == (pid_fiu1 = fork ()))
+  {
+    perror ("Error on fork"); return 1;
+  }
+
+  / * branch of execution * /
+  if (pid_fiu1 == 0)
+  {/ * code area executed only by son * /
+    printf ("\ n [P1] Process son 1, with PID:% d. \ n", getpid ());
+    generate_son1 ();
+    return 0;
+  }
+  else
+  {/ * code area executed only by parent * /
+    printf ("\ n [P0] Father process, with PID:% d. \ n", getpid ());
+
+    / * create the process son 2 * /
+    if (-1 == (pid_fiu2 = fork ()))
+    {
+      perror ("Error on fork"); return 2;
+    }
+    / * branch of execution * /
+    if (pid_fiu2 == 0)
+    {/ * code area executed only by son * /
+      printf ("\ n [P2] Son 2 process, with PID:% d. \ n", getpid ());
+      generate_son2 ();
+      return 0;
+    }
+    else
+    {
+      wait (NULL); wait (NULL);
+      calcul_tata ();
+      return 0;
+    }
+  }
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Solutions for some of the additional exercises.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 [N sons] Write a program C that creates N (where N is a value read from the keyboard) sons processes of the initial process. Namely,
+      the initial process P0 will have as sons the processes P1, P2, ..., PN, and they will have no son. Each process will print through one
+      message, his serial number as son or initial process, his PID and that of his parent.
+      Write a non-recursive solution to this problem (i.e. use an iterative loop to create processes).
+
+
+Here is a possible solution:
+
+lab9_ex3.c:
+============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / wait.h>
+#include <sys / types.h>
+#include <stdlib.h>
+
+
+int main (int argc, char * argv [])
+{
+    int N, i;
+    pid_t pid;
+
+    printf ("Enter the number of threads:");
+    scanf ("% d", & N);
+
+    printf ("I'm the initial process with the PID:% d, and my parent is the process with the PID:% d. \ n", getpid (), getppid ());
+
+    for (i = 1; i <= N; i ++)
+    {
+if (-1 == (pid = fork ()))
+{
+perror ("Error on fork");
+exit (1);
+}
+if (0 == pid)
+{
+printf ("I am the process son% d, having the PID:% d, and my parent is the process with the PID:% d. \ n", i, getpid (), getppid ());
+return i; // the child does not have to resume the execution of the for loop, so as not to create processes in turn
+  }
+    }
+
+    for (i = 1; i <= N; i ++) // the initial process will wait for the completion of the N sons (otherwise, sometimes (i.e. not necessarily in all executions) it is possible that
+wait (NULL); // some sons appear as orphans (i.e. having as parent the process with PID 1)
+    return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 [List of processes (iterative)] Write a program C to create a list of processes of length N (where N is a value read from the keyboard).
+      Namely, the process P1 will have as son on the process P2, this in turn will have as son on the process P3, and so on. until the PN trial, which will not
+      he had no son. Each process will print, in a single message, its serial number, its PID, its parent, as well as
+      and his son's PID and termination code.
+      Write a non-recursive solution to this problem (i.e. use an iterative loop to create processes).
+
+
+Here is a possible solution:
+
+lab9_ex4.c:
+============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / wait.h>
+#include <sys / types.h>
+#include <stdlib.h>
+
+
+int main (int argc, char * argv [])
+{
+    int N, i, codterm;
+    pid_t pid;
+
+    printf ("Enter the number of processes:");
+    scanf ("% d", & N);
+
+    for (i = 1; i <N; i ++)
+    {
+if (-1 == (pid = fork ()))
+{
+perror ("Error on fork");
+exit (1);
+}
+
+if (0! = pid)
+{
+wait (& codterm); // each process will wait for the end of the son process directly, in order to obtain its termination code
+                   // obs: even if the display of the termination code was not required, a wait would still be needed here (otherwise, sometimes (i.e. not necessarily
+                   // at all executions) it is possible that some processes appear as orphans (i.e. as having as parent the process with PID 1)
+
+            // printf ("I am the process% d in the process chain, having the PID:% d, my parent is the process with the PID:% d, and the son created by me"
+            // "has PID:% d and ended with end code:% d. \ n", i, getpid (), getppid (), pid, codterm >> 8);
+
+            / * abbreviated display: * /
+printf ("I am the process% d, having the PID:% d, the parent has the PID:% d, and the created child has the PID:% d and ended with the code:% d. \ n",
+i, getpid (), getppid (), pid, codterm >> 8);
+
+return i; // the father does not have to resume the execution of the for loop, so as not to create a second direct son process, then a third, s.a.m.d.
+  }
+        else
+{
+if (i == N-1) // the last process in the chain, which will not create a child process
+{
+printf ("I'm the last process,% d in the process chain, with PID:% d, and my parent is the process with PID:% d. \ n",
+N, getpid (), getppid ());
+return N;
+}
+}
+
+    } // end for
+
+    return 0;
+}
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 [List of processes (recursive)] Develop a recursive solution to problem 4 above (write a recursive function for creating processes).
+
+
+Here is a possible solution:
+
+lab9_ex5.c:
+============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / wait.h>
+#include <sys / types.h>
+#include <stdlib.h>
+
+int N;
+
+void create_son (int i); // each call of this function will create a single process (i.e., it will make a single call fork ())
+
+int main (int argc, char * argv [])
+{
+    printf ("Enter the number of processes:");
+    scanf ("% d", & N);
+    create_son (1);
+    return 0;
+}
+
+
+void create_son (int i)
+{
+    int codterm;
+    pid_t pid;
+
+    if (i <N)
+    {
+if (-1 == (pid = fork ()))
+{
+perror ("Error on fork");
+exit (1);
+}
+
+if (0! = pid)
+{
+wait (& codterm); // each process will wait for the end of the son process directly, in order to obtain its termination code
+                   // obs: even if the display of the termination code was not required, a wait would still be needed here (otherwise, sometimes (i.e. not necessarily
+                   // at all executions) it is possible that some processes appear as orphans (i.e. as having as parent the process with PID 1)
+
+            // printf ("I am the process% d in the process chain, having the PID:% d, my parent is the process with the PID:% d, and the son created by me"
+            // "has PID:% d and ended with end code:% d. \ n", i, getpid (), getppid (), pid, codterm >> 8);
+
+            / * abbreviated display: * /
+printf ("I am the process% d, having the PID:% d, the parent has the PID:% d, and the created child has the PID:% d and ended with the code:% d. \ n",
+i, getpid (), getppid (), pid, codterm >> 8);
+
+exit (i); // the father does not have to resume the execution of the for loop, so as not to create a second direct son process, then a third, s.a.m.d.
+  }
+        else
+{
+create_son (i + 1); // recursive call
+}
+    }
+    else // meaning i == N, so this is the last process in the chain, which will not create a child process
+    {
+printf ("I'm the last process,% d in the process chain, with PID:% d, and my parent is the process with PID:% d. \ n",
+N, getpid (), getppid ());
+exit (N);
+    }
+}
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6-8. Try to solve them yourself.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

@@ -1,0 +1,2 @@
+the reading end of a pipe should be closed but it is not a restriction.
+the writing end of a pipe MUST be closed.

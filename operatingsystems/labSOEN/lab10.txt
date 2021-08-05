@@ -1,0 +1,453 @@
+Here are some possible solutions for the 10th lab exercises:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 and 2. Try to solve them yourself.
+
+Ex.2. The idea is to correctly implement the two invocations of the ls and rm commands, using the two specified calls (execlp, respectively execv).
+It should also be noted the need for redoing calls to be made in a new process (son) so that the main process remains active.
+and after each of their invocations, because it has other operations to perform after each of the two invocations.
+
+Here is a possible solution template (all you have to do is implement the rm command invocation code yourself, following the example given for the ls command):
+
+lab10_ex2.c:
+=============
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+
+
+int main (int argc, char * argv [])
+{
+  char nume_dir [100];
+  int cod_term;
+
+  // obtaining the name of the director to be processed
+  if (argc> 1)
+  {
+    strcpy (dir_name, argv [1]);
+  }
+  else
+  {
+    printf ("Enter the name of the desired directory:"); scanf ("% s", dir_name);
+  }
+
+  // invoking the first command: ls -l dir_name
+  switch (fork ())
+  {
+    case -1: perror ("Fork error"); exit (1);
+    case 0: execlp ("ls", "ls", "- l", dir_name, NULL); perror ("Error on first exec"); exit (2);
+    default: wait (& cod_term);
+              if (WIFEXITED (cod_term))
+                 printf ("The ls command ran, ending with the termination code:% d. \ n", WEXITSTATUS (term_code));
+              else
+                 printf ("The ls command was forcibly terminated by a signal. \ n");
+  }
+
+  // invoking the second command: rm -r -i dir_name
+  // TODO: implement a similar switch yourself to invoke the rm command
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Solutions for some of the additional exercises.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 i) [ls] Write a program C that executes the command ls -i -l dirname, where dirname is a parameter given to the execution of the program in the line
+      command, or the current working directory in case this parameter is missing. The text should be displayed at the end of execution:
+      "The ls command has been executed ...", but only if the ls command has actually been executed, otherwise the text will be displayed:
+      "The ls command could not be executed ...".
+      Requirement: the execlp () primitive will be used and not the system () function!
+      ii) Rewrite the program in point i), using the execl () primitive instead of the execlp () primitive.
+
+
+i) Here is a possible solution:
+
+lab10_ex3i.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+
+int main (int argc, char * argv [])
+{
+  pid_t pid;
+  int cod_term;
+
+  if (argc! = 2)
+  {
+    fprintf (stderr, "The program must be called with a parameter (a directory name). \ n");
+    exit (1);
+  }
+  if (-1 == (pid = fork ()))
+  {
+    perror ("Error on fork");
+    exit (2);
+  }
+
+  if (pid == 0)
+  {/ * in son I call exec to execute the desired command * /
+ 
+    execlp ("ls", "ls", "- i", "- l", argv [1], NULL);
+ 
+    perror ("Error in exec");
+    exit (10); / * we use a larger number, e.g. 10, and not 1,2, ... because these small values ​​could be returned by the ls command! * /
+  }
+
+  / * (only in parent) research how the son process ended * /
+  wait (& cod_term);
+  if (cod_term >> 8 == 10)
+       printf ("The ls command could not be executed ... (exec call failed). \ n");
+  else
+  {
+       printf ("The ls command was executed ...");
+       if (cod_term == 0)
+          printf ("successful! \ n");
+       else
+          printf ("but failed, with termination code:% d. \ n", term_code >> 8);
+  }
+  return 0;
+}
+
+ii) Solution: in the above program, you just need to replace the line of code
+execlp ("ls", "ls", "- i", "- l", argv [1], NULL);
+with
+execl ("/ bin / ls", "ls", "- i", "- l", argv [1], NULL);
+
+So note that when using the execl () call, the absolute path to the desired command must be specified, because if the executable file is
+specified by a simple name (i.e., no absolute or relative path), then it is not searched in directories in the PATH environment variable,
+as in the case of the exelp () call.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 i) [cut] Write a C program that executes the command cut -d: -f1,3 / etc / passwd, and at the end of the execution the text must be displayed:
+      "Cut command executed ...", but only if the cut command has actually been executed, otherwise the text will be displayed:
+      "Cut command could not be executed ...".
+      Requirement: the execlp () primitive will be used and not the system () function!
+      ii) Rewrite the program in point i), using the execl () primitive instead of the execlp () primitive.
+
+
+i) Here is a possible solution:
+
+lab10_ex4i.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+
+int main ()
+{
+  pid_t pid;
+  int cod_term;
+
+  if (-1 == (pid = fork ()))
+  {
+    perror ("Error on fork");
+    exit (2);
+  }
+
+  if (pid == 0)
+  {/ * in son I call exec to execute the desired command * /
+ 
+    execlp ("cut", "cut", "- d:", "- f1,3", "/ etc / passwd", NULL);
+ 
+    perror ("Error in exec");
+    exit (10); / * we use a larger number, e.g. 10, and not 1,2, ... because these small values ​​could be returned and the cut command! * /
+  }
+
+  / * (only in parent) research how the son process ended * /
+  wait (& cod_term);
+  if (cod_term >> 8 == 10)
+       printf ("The cut command could not be executed ... (exec call failed). \ n");
+  else
+  {
+       printf ("Cut command executed ...");
+       if (cod_term == 0)
+          printf ("successful! \ n");
+       else
+          printf ("but failed, with termination code:% d. \ n", term_code >> 8);
+  }
+  return 0;
+}
+
+ii) Solution: proceed similarly as in ex.3: in the above program, you only need to replace the line of code
+execlp ("cut", "cut", "- d:", "- f1,3", "/ etc / passwd", NULL);
+with
+execl ("/ usr / bin / cut", "cut", "- d:", "- f1,3", "/ etc / passwd", NULL);
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 i) [finger] Write a program C that executes the command finger -p -m username, where username is a parameter given to the execution of the program in
+      command line. At the end of the execution, the text must be displayed: "The finger command has been executed ...", but only in the situation when really
+      the finger command was executed, otherwise the text will be displayed: "The finger command could not be executed ...".
+      Requirement: the execlp () primitive will be used and not the system () function!
+      ii) Rewrite the program in point i), using the execl () primitive instead of the execlp () primitive.
+
+
+i) Here is a possible solution:
+
+lab10_ex5i.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+
+int main (int argc, char * argv [])
+{
+  pid_t pid;
+  int cod_term;
+
+  if (argc! = 2)
+  {
+    fprintf (stderr, "The program must be called with a parameter (a username). \ n");
+    exit (1);
+  }
+  if (-1 == (pid = fork ()))
+  {
+    perror ("Error on fork");
+    exit (2);
+  }
+
+  if (pid == 0)
+  {/ * in son I call exec to execute the desired command * /
+ 
+    execlp ("finger", "finger", "- p", "- m", argv [1], NULL);
+ 
+    perror ("Error in exec");
+    exit (10); / * we use a larger number, e.g. 10, and not 1,2, ... because these small values ​​could be returned by the finger command! * /
+  }
+
+  / * (only in parent) research how the son process ended * /
+  wait (& cod_term);
+  if (cod_term >> 8 == 10)
+       printf ("The finger command could not be executed ... (exec call failed). \ n");
+  else
+  {
+       printf ("Finger command executed ...");
+       if (cod_term == 0)
+          printf ("successful! \ n");
+       else
+          printf ("but failed, with termination code:% d. \ n", term_code >> 8);
+  }
+  return 0;
+}
+
+Observation:
+Basically, this is a program identical to lab10_ex3i.c (and lab10_ex4i.c) above, the only difference being the line of code:
+execlp ("ls", "ls", "- i", "- l", argv [1], NULL);
+which must be replaced by:
+execlp ("finger", "finger", "- p", "- m", argv [1], NULL);
+plus a few minor changes: "(a directory name)" is replaced with "(a username)" in the display in the first if,
+respectively, replace "ls command" with "finger command" in the two displays after the wait call.
+
+
+ii) Solution: proceed similarly as in ex.3: in the above program, you only need to replace the line of code
+execlp ("finger", "finger", "- p", "- m", argv [1], NULL);
+will be replaced with
+execl ("/ usr / bin / finger", "finger", "- p", "- m", argv [1], NULL);
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 [Amount distributed supervisor / workers] Write a program C to perform the following: a process P0 (with the role of supervisor process) read
+      numbers on the keyboard and send them by dividing them equally into three processes, be they P1, P2 and P3 (as process workers), they calculate
+      the partial amounts and send them back to parent P0, and P0 collects the three partial amounts and displays the final result.
+      Ordinary files will be used for communication between processes - the P0 process writes the numbers read in the files f1i, f2i and f3i, from where they are read
+      by the processes P1, P2 and P3 respectively, which add them up and write the partial sums in the files f1o, f2o and f3o, from where they are read by P0 and added.
+      Requirement: the worker program be called by exec from the child forked by the supervisor process, and the input file name (f {1,2,3} i) and
+      respectively of the output one (f {1,2,3} o) to be transferred to it as arguments in the command line.
+      Note: You will also need to resolve some synchronization issues that arise between inter-process communications, i.e. it must be ensured that the reading
+      some numbers in the file will be done only after they have been written to that file!
+      (Hint: for the necessary synchronization to the input files it is enough to create the processes only after they have finished entering
+      numbers on the keyboard. And for the necessary synchronization to the output files it is enough to use wait calls in the supervisor process
+      to wait for the workers process to finish, before reading the subtotals from the output files.)
+
+
+Here is a possible solution: the solution consists of two source C programs, namely:
+
+a) supervisor.c is the program that reads the numbers, creates the worker processes and gives them to calculate the partial amounts, and finally calculates the final amount;
+   the program is written so as to create not only 3 worker processes, but any number (read at runtime) of worker processes:
+
+supervisor.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#define MAX_NO_WORKERS 10
+#define MAX_LENGTH_FILENAME 50
+
+int main ()
+{
+    int nr = 0, k, NW = 0, i, pid, sum = 0;
+    char input_filenames [MAX_NO_WORKERS] [MAX_LENGTH_FILENAME];
+    char output_filenames [MAX_NO_WORKERS] [MAX_LENGTH_FILENAME];
+    FILE * fdi [MAX_NO_WORKERS], * fdo;
+ 
+    printf ("Give the number of workers processes:");
+    scanf ("% d", & NW);
+    if ((NW <1) || (NW> MAX_NO_WORKERS))
+    {
+        fprintf (stderr, "Incorrect input data. \ n");
+        exit (1);
+    }
+
+    for (i = 1; i <= NW; ++ i)
+    {
+sprintf (input_filenames [i], "f% di.txt", i);
+sprintf (output_filenames [i], "f% do.txt", i);
+    }
+
+    // read numbers from the keyboard and create the NW input files
+
+    for (i = 1; i <= NW; ++ i)
+    {
+if (NULL == (fdi [i-1] = fopen (input_filenames [i], "w")))
+        {
+fprintf (stderr, "Supervisor: error opening input file% s. \ n", input_filenames [i]);
+            perror ("Cause of error:");
+exit (2);
+        }
+    }
+
+    printf ("Enter the sequence of numbers (0 to end): \ n");
+    k = 0;
+    do {
+scanf ("% d", & nr);
+if (nr! = 0)
+fprintf (fdi [k], "% d", nr);
+k = (k + 1)% NW;
+       } while (nr! = 0);
+ 
+    for (i = 1; i <= NW; ++ i)
+    {
+fclose (fdi [i-1]);
+    }
+    
+    // creating the NW worker processes that will execute the program from the source worker.c, with different parameters
+
+    for (i = 1; i <= NW; ++ i)
+    {
+if (-1 == (pid = fork ()))
+{
+fprintf (stderr, "Supervisor: error in fork () call for% d worker process. \ n", i);
+            perror ("Cause of error:");
+exit (3);
+}
+if (pid == 0)
+{// in son
+
+execl ("worker", "worker", input_filenames [i], output_filenames [i], NULL);
+
+fprintf (stderr, "Supervisor: error on exec () call for% d worker process. \ n", i);
+            perror ("Cause of error:");
+exit (4);
+}
+// else
+// wait (NULL);
+    }
+
+    // only after I started all the worker processes, I wait for them to finish executing
+
+    for (i = 1; i <= NW; ++ i)
+    {
+        wait (NULL);
+    }
+
+    // read the NW partial amounts from the output files
+    for (i = 1; i <= NW; ++ i)
+    {
+if (NULL == (fdo = fopen (output_filenames [i], "r")))
+{
+fprintf (stderr, "Supervisor: error opening output file% s. \ n", output_filenames [i]);
+            perror ("Cause of error:");
+exit (5);
+        }
+if (1! = fscanf (fdo, "% d", & nr))
+        {
+            fprintf (stderr, "Supervisor: error reading% d partial sums. \ n", i);
+            exit (6);
+        }
+else
+            sum + = nr;
+fclose (fdo);
+    }
+
+    // display the total amount
+    printf ("Supervisor: the sum of the entered sequence is:% d. \ n", sum);
+
+    // optionally, we can do "cleaning": delete the input and output files
+    for (i = 1; i <= NW; ++ i)
+    {
+        remove (input_filenames [i]);
+        remove (output_filenames [i]);
+    }
+    return 0;
+}
+
+b) worker.c is the program that is called in each process son created by the supervisor and that calculates a partial sum, of the numbers read from
+   the first file received as a parameter on the command line, which it writes to the second file received as a parameter on the command line:
+
+worker.c:
+==========
+
+#include <stdio.h>
+
+int main (int argc, char * argv [])
+{
+    int no, sum = 0;
+    FILE * fd;
+
+    // reading numbers and calculating the amount
+    if (NULL == (fd = fopen (argv [1], "r")))
+    {
+printf ("Worker: error opening input file% s. \ n", argv [1]);
+return 1;
+    }
+
+    while (! feof (fd))
+    {
+if (1 == fscanf (fd, "% d", & nr))
+sum + = nr;
+    }
+    fclose (fd);
+
+    // write the calculated amount
+    if (NULL == (fd = fopen (argv [2], "w")))
+    {
+printf ("Worker: error opening output file% s. \ n", argv [2]);
+return 2;
+    }
+    fprintf (fd, "% d \ n", sum);
+    fclose (fd);
+    
+    return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6, 8 and 9. Try to solve them yourself.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

@@ -1,0 +1,388 @@
+Here are possible solutions for some of the exercises in the 13th lab:
+
+<! ------------------------------------------------ -------------------------------------------------- ----------------------->
+
+1. Rewrite the pipe-ex1.c and pipe-ex2.c examples given in the lesson about internal channels, using external channels instead of
+internal channels for communication between processes.
+
+Solution idea: replace the pipe call (...) with an mkfifo call (...) with specific parameters, and then on each branch of
+execution parent / son opens the necessary end (instead of closing the unnecessary end of the first variant with internal channels).
+
+modified pipe-ex1.c:
+=====================
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys / stat.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+#include <errno.h>
+
+#define NMAX 1000
+
+int main (void)
+{
+  int p [2];
+  char ch;
+  pid_t pid;
+
+  / * create fifo * /
+  if (-1 == mkfifo ("canal-extern", 0600))
+  {
+      if (errno == EEXIST) // errno = 17 for "File already exists"
+         fprintf (stdout, "Note: fifo channel 'external-channel' already exists! \ n");
+      else
+      {
+         perror ("Error creating fifo channel. Cause of error");
+         exit (1);
+      }
+  }
+
+  / * create child process * /
+  if (-1 == (pid = fork ()))
+  {
+    perror ("Error creating child process. Cause of error");
+    exit (2);
+  }
+
+  if (pid)
+  {/ * in tata * /
+
+    / * the father opens his writing end * /
+    p [1] = open ("external channel", O_WRONLY);
+
+    / * reads characters from the keyboard, to finish: CTRL + D (i.e. EOF in Unix),
+       and transmits only those that are lowercase * /
+    printf ("Usage: type any characters and end with Ctrl + D. \ n");
+    while ((ch = getchar ())! = EOF)
+      if ((ch> = 'a') && (ch <= 'z'))
+        write (p [1], & ch, 1);
+
+    / * the father closes the end of Write, so that the son can read EOF from the channel ... * /
+    close (p [1]);
+
+    / * ... and then wait for the son to finish * /
+    wait (NULL);
+  }
+  else
+  {/ * in fiu * /
+    char buffer [NMAX];
+    int nIndex = 0;
+
+    / * son opens his reading end * /
+    p [0] = open ("external channel", O_RDONLY);
+
+    / * son reads pipe characters and saves in buffer,
+       until it detects EOF, then displays the contents of the buffer. * /
+
+    while (read (p [0], & ch, 1)! = 0)
+      if (nIndex <NMAX)
+        buffer [nIndex ++] = ch;
+
+    buffer [(nIndex == NMAX)? NMAX-1: nIndex] = '\ 0';
+    printf ("Son: I read buffer =% s \ n", buffer);
+
+    / * son closes his end Read * /
+    close (p [0]);
+        / * Obs: I didn't even need this explicit close anymore, because
+        however, all descriptors are closed at the end of the program. * /
+  }
+  return 0;
+}
+
+
+modified pipe-ex2.c:
+=====================
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys / stat.h>
+#include <sys / types.h>
+#include <sys / wait.h>
+#include <errno.h>
+
+int main (void)
+{
+  int nr, cod_r;
+  FILE * fin, * fout;
+  pid_t pid;
+
+  / * create fifo * /
+  if (-1 == mkfifo ("canal-extern", 0600))
+  {
+      if (errno == EEXIST) // errno = 17 for "File already exists"
+         fprintf (stdout, "Note: fifo channel 'external-channel' already exists! \ n");
+      else
+      {
+         perror ("Error creating fifo channel. Cause of error");
+         exit (1);
+      }
+  }
+
+  / * create child process * /
+  if (-1 == (pid = fork ()))
+  {
+    perror ("Error creating child process. Cause of error");
+    exit (2);
+  }
+
+  if (pid)
+  {/ * in tata * /
+
+    / * the father opens his writing end * /
+    fout = fopen ("canal-extern", "w");
+
+    / * read numbers from the keyboard, to finish: CTRL + D (i.e. EOF in Unix),
+       and transmits them through the channel to the son process.
+       NOTE: in the channel the numbers are written formatted, not binary, and
+       therefore they must be separated by a character that is not a number
+       (in this case I used '\ n') in order not to "mix"
+       digits from different numbers when read from the channel! * /
+    printf ("Usage: enter integers and end with Ctrl + D. \ n");
+    while ((cod_r = scanf ("% d", & nr))! = EOF)
+    {
+      if (cod_r == 1)
+      {
+         fprintf (fout, "% d \ n", nr);
+         fflush (fout);
+      }
+      else
+      {
+         fprintf (stderr, "Error: you did not enter characters allowed to appear in a number! \ n");
+         exit (3);
+      }
+    }
+
+    / * the father closes the end of Write, so that the son can read EOF from the channel ... * /
+    fclose (fout);
+
+    / * ... and then wait for the son to finish * /
+    wait (NULL);
+  }
+  else
+  {/ * in fiu * /
+
+    / * son opens his reading end * /
+    fin = fopen ("external channel", "r");
+
+    / * the son reads the numbers from the channel and displays them on the screen, until he detects EOF in the channel.
+       OBS: according to the above, the character '\ n' is used as a number separator! * /
+    while (fscanf (fin, "% d", & nr)! = EOF)
+    {
+      printf ("[Son] I received the number:% d \ n", no);
+      fflush (stdout);
+    }
+
+    / * son closes his end Read * /
+    fclose (fin);
+      / * Obs: I didn't even need this explicit fclose anymore, because
+       however, all descriptors are closed at the end of the program. * /
+  }
+  return 0;
+}
+
+<! ------------------------------------------------ -------------------------------------------------- ----------------------->
+
+2. [Hi-ho] Write two hi.c and ho.c programs, which produce the following effect when executed simultaneously (in parallel):
+the first to write the text "hi-" repeatedly on the screen, and the second to write the text "ho," repeatedly, and in addition it must be
+synchronize the processes, using fifo channels, so that the sequence appears exactly on the screen: hi-ho, hi-ho, hi-ho, ... and not other
+possible combinations of interclassification of the messages displayed by the two processes when they are launched in execution simultaneously.
+(Hint: use two fifo channels, one fifo_hi2ho channel through which the hi program notifies the other that it is his turn to write
+on the screen (i.e., the resource shared by the two processes), and another fifo_ho2hi channel through which the ho program notifies the other that it is
+turn to write on the screen.)
+
+Here is a possible solution: the solution consists of 2 source C programs, namely:
+
+a) hi.c is the program that displays "hi" s on the screen:
+
+hi.c:
+======
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys / stat.h>
+#include <sys / types.h>
+#include <errno.h>
+
+int main (void)
+{
+   int fd_in, fd_out, nr_iteratii = 100;
+   char ch = '0';
+
+   / * create fifos * /
+   if (-1 == mkfifo ("hi2ho", 0600))
+   {
+      if (errno! = EEXIST) // errno = 17 for "File already exists"
+      {
+         perror ("Error creating fifo channel 'hi2ho'. Cause of error");
+         exit (1);
+      }
+   }
+
+   / * the necessary openings, only of the absolutely necessary writing or reading heads * /
+   fd_out = open ("hi2ho", O_WRONLY);
+   fd_in = open ("ho2hi", O_RDONLY);
+
+   while (nr_iteratii> 0)
+   {
+nr_iteratii--;
+
+        printf ("Hi-"); fflush (stdout);
+
+write (fd_out, & ch, 1); // "notify" the other that it is his turn to display on the screen
+
+read (fd_in, & ch, 1); // I'm waiting to "receive notification" from the other that I can continue
+   }
+
+   return 0;
+}
+
+b) ho.c is the program that displays "ho" on the screen:
+
+ho.c:
+======
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys / stat.h>
+#include <sys / types.h>
+#include <errno.h>
+
+int main (void)
+{
+   int fd_in, fd_out, nr_iteratii = 100;
+   char ch = '1';
+
+   / * create fifos * /
+   if (-1 == mkfifo ("hi2ho", 0600))
+   {
+      if (errno! = EEXIST) // errno = 17 for "File already exists"
+      {
+         perror ("Error creating fifo channel 'hi2ho'. Cause of error");
+         exit (1);
+      }
+   }
+
+   if (-1 == mkfifo ("ho2hi", 0600))
+   {
+      if (errno! = EEXIST) // errno = 17 for "File already exists"
+      {
+         perror ("Error creating fifo channel 'ho2hi'. Cause of error");
+         exit (1);
+      }
+   }
+
+   / * the necessary openings, only of the absolutely necessary writing or reading heads * /
+   fd_in = open ("hi2ho", O_RDONLY);
+   fd_out = open ("ho2hi", O_WRONLY);
+
+   while (nr_iteratii> 0)
+   {
+nr_iteratii--;
+
+read (fd_in, & ch, 1); // I'm waiting to "receive notification" from the other that I can continue
+
+        printf ("ho,"); fflush (stdout);
+
+write (fd_out, & ch, 1); // "notify" the other that it is his turn to display on the screen
+   }
+
+   printf ("\ nHere's it! \ n");
+   return 0;
+}
+
+The two programs must be run simultaneously, for example as follows:
+
+UNIX> ./hi.exe & ./ho.exe &
+
+Remarks:
+i) the order in which the 2 fifo channels open in the 2 programs is essential - they must be opened in the same order in both
+    programs, because otherwise inter-blocking would occur: each process would wait indefinitely being blocked at the first open () call in the program.
+ii) because above we chose to open first the "hi2ho" channel and then the "ho2hi" channel, only 1 + 2 = 3 calls are enough
+    mkfifo as above (and not 4, 2 in each program) to ensure that open calls to any possible execution
+    will not fail due to the "non-existent file" reason (obviously, there are other ways to guarantee this fact, through which
+    use only 2 calls mkfifo).
+
+<! ------------------------------------------------ -------------------------------------------------- ----------------------->
+
+3. Write a C program to determine the capacity of an external channel.
+(Hint: set the non-blocking character for the channel and then write to it until it fills up, counting how many bytes have been written.)
+
+Here is a possible solution, similar to the one from the similar problem with internal channels:
+
+dimension_fifo.c:
+==============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys / stat.h>
+#include <sys / types.h>
+#include <errno.h>
+
+int main (void)
+{
+   int fd, dimension;
+   char ch = '0';
+
+   / * create fifo * /
+   if (-1 == mkfifo ("canal-extern", 0600))
+   {
+      if (errno == EEXIST) // errno = 17 for "File already exists"
+         fprintf (stdout, "Note: fifo channel 'external-channel' already exists! \ n");
+      else
+      {
+         perror ("Error creating fifo channel. Cause of error");
+         exit (1);
+      }
+   }
+
+   / * opening with non-blocking setting required for write end * /
+   fd = open ("external-channel", O_RDWR | O_NONBLOCK);
+   if (-1 == fd)
+   {
+      perror ("Error opening fifo file with non-blocking setting. Cause of error");
+      exit (2);
+   }
+
+   dimension = 0;
+   printf ("I'm starting to fill the fifo channel ... \ n");
+
+   while (1)
+   {
+      if (-1 == write (fd, & ch, 1))
+      {
+         perror ("\ nError (possible pipe filling?). Cause of error");
+         fprintf (stderr, "errno =% d \ n", errno);
+         if (errno == EAGAIN)
+         {
+             fprintf (stderr, "Indeed, the cause of the error is channel filling! \ n");
+             break;
+         }
+         else
+         {
+             fprintf (stderr, "The cause of the error is other than filling the channel! \ n");
+             exit (3);
+         }
+      }
+      else
+      {
+         ++ dimensions;
+         if (dimension% 1024 == 0) {printf ("% d Ko ...", dimension / 1024); fflush (stdout); usleep (50,000); }
+      }
+   }
+
+   printf ("The capacity of a fifo channel is% d bytes. \ n", size);
+   return 0;
+}
+
+<! ------------------------------------------------ -------------------------------------------------- ----------------------->

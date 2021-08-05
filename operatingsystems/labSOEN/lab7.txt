@@ -1,0 +1,940 @@
+Here are some possible solutions for the exercises in the 7th lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Write a C program that receives a file name from the command line and displays the number of occurrences for each character
+      what appears in that file.
+      (Hint: by scrolling through the file, calculate how many times each possible ASCII character appears, i.e. any byte contained
+      between 0 and 255.)
+
+
+a) The first solution: a program in which we use system calls (open, read, etc.) to process the file.
+Notice how we handle all possible errors / exceptions that occur during program execution.
+
+lab7_ex1a.c:
+=============
+
+#include <unistd.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdlib.h>
+
+#define ASCII_SIZE 256
+
+int main (int argc, char * argv [])
+{
+    int file;
+    int count [ASCII_SIZE];
+    unsigned char ch;
+    int i, r;
+    
+    if (argc == 1)
+    {
+        fprintf (stderr, "Insufficient arguments!");
+        exit (1);
+    }
+
+    for (i = 0; i <ASCII_SIZE; i ++)
+        count [i] = 0;
+    
+    file = open (argv [1], O_RDONLY);
+    if (file == -1)
+    {
+        perror ("Opening error");
+        exit (2);
+    }
+
+    while (1)
+    {
+        r = read (file, & ch, 1);
+        if (r == -1)
+        {
+            perror ("Error reading");
+            exit (3);
+        }
+        if (r == 0)
+            break;
+
+        count [ch] ++;
+    }
+
+    if (close (file) == -1)
+    {
+        perror ("Closing error");
+        exit (4);
+    }
+
+    for (i = 0; i <ASCII_SIZE; i ++)
+        if (count [i])
+            printf ("The character% c with ASCII code% d appears% d times in the file. \ n", i, i, count [i]);
+
+    return 0;
+}
+
+
+b) The second solution, in which we read more efficiently from the disk (one disk sector at a time and not one byte at a time, so we do less I / O operations with the disk):
+
+lab7_ex1b.c:
+=============
+
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define ASCII_SIZE 256
+#define BUFFER_SIZE 4096
+
+unsigned char buffer [BUFFER_SIZE];
+int fd, bytes_read, i, count [ASCII_SIZE];
+
+int main (int argc, char ** argv)
+{
+  if (argc == 1) {
+    fprintf (stderr, "Give the file to be processed as a parameter! \ n");
+    return 1;
+  }
+
+  fd = open (argv [1], O_RDONLY);
+  if (fd == -1) {
+    perror ("Opening file");
+    return 2;
+  }
+
+  while (1) {
+ 
+    bytes_read = read (fd, buffer, BUFFER_SIZE);
+
+    if (bytes_read == 0) {
+      break;
+    }
+
+    if (bytes_read == -1) {
+      perror ("Reading the file");
+      return 3;
+    }
+
+    for (i = 0; i <bytes_read; i ++) {
+      count [buffer [i]] ++;
+    }
+    
+  }
+
+  close (fd);
+
+  for (i = 0; i <ASCII_SIZE; i ++) {
+    if (count [i])
+      printf ("The character% c with ASCII code% d appears% d times in the file. \ n", i, i, count [i]);
+  }
+
+  return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Implement a simplified clone for the find command, which works like this: a single parameter is received, representing the exact name of the file
+      which is sought after. The search is done in the home directory of the current user, recursively traversing the entire structure of its subdirectories.
+      The path to each search result will be displayed. In addition, in case of error, the program will display an explicit message and will close "elegantly", returning and
+      a termination code specific to the error that occurred.
+      (Hint: Browse the directory with the given template and, for each entry in the directory that has the given name, display its path, and for each entry
+      what is the directory type, recursively call the scroll function.)
+
+The idea of ​​solving: similar to exercise 3, the recursive traversal of the directory structure can be implemented with the given template.
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write a C program that displays the type, size, permissions, and owner of all files and subdirectories in
+      the directory given as an argument (recursive path).
+      (Hint: Browse the directory with the given template and, for each entry in the directory, use the state primitive to find the required data in the statement.)
+
+
+Here is a complete solution, which also deals with all possible errors:
+
+lab7_ex3.c:
+============
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys / types.h>
+#include <sys / stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <pwd.h>
+
+void input_processing (char * path);
+
+int main (int argc, char * argv [])
+{
+    struct state st;
+
+    if (1 == argc)
+    {
+         fprintf (stderr, "Usage:% s directory! \ n", argv [0]);
+         exit (1);
+    }
+
+    if (0! = stat (argv [1], & st))
+    {
+        fprintf (stderr, "Error in state for% s. \ t", argv [1]);
+        perror ("The cause is");
+        exit (2);
+    }
+    if (! S_ISDIR (st.st_mode))
+    {
+        fprintf (stderr, "Error:% s is not a directory! \ n", argv [1]);
+        exit (3);
+    }
+
+    printf ("Analyzing directory:% s \ n", argv [1]);
+    input_processing (argv [1]);
+    return 0;
+}
+
+void display_info (char * path);
+
+void input_processing (char * path)
+{
+    / * the path argument will be the name of a file of any type: it can be a directory, either of normal file type, or of the other 4 possible types * /
+
+    DIR * dir;
+    struct dirent * de;
+    struct state st;
+    char name [PATH_MAX];
+
+    / * first we display the information about the file (of any type) path * /
+
+    display_info (path);
+
+
+    / * then, only if the path is of the directory type, we go through it to process its content * /
+
+    if (0! = stat (path, & st))
+    {
+        fprintf (stderr, "State error for% s. \ t", path);
+        perror ("The cause is");
+        return; / * we do not finish the execution with exit (), but we return to the caller to continue with what is left to process * /
+    }
+    / * It can also be optimized: the above state call can be saved, because it was already executed in the previous call display_info (),
+       we can modify the display_info () function to return an int to tell us if the path is a directory or not.
+    * /
+    if (S_ISDIR (st.st_mode)) / * if path is directory * /
+    {
+        if (NULL == (dir = opendir (path)))
+        {
+            fprintf (stderr, "Error opening directory% s. \ t", path);
+            perror ("The cause is");
+            return; / * we do not finish the execution with exit (), but we return to the caller to continue with what is left to process * /
+        }
+        while (NULL! = (de = readdir (dir)))
+        {
+            if (strcmp (de-> d_name, ".") && strcmp (de-> d_name, "..")) / * ignore default entries. and .. from any directory * /
+            {
+                sprintf (name, "% s /% s", path, de-> d_name);
+                input_processing (name); / * recursive scroll call * /
+            }
+        }
+        closedir (dir);
+    }
+}
+
+void display_info (char * path)
+{
+    struct state st;
+    struct passwd * pwd; / * we will use it to find out the username associated with a UID * /
+    char perm [10] = "---------"; / * here we will build the symbolic form for the file permissions * /
+
+    if (0! = stat (path, & st))
+    {
+        fprintf (stderr, "State error for% s. \ t", path);
+        perror ("The cause is");
+        return; / * we do not finish the execution with exit (), but we return to the caller to continue with what is left to process * /
+    }
+
+    printf ("Analyzing file / directory:% s \ n", path);
+    printf ("\ tType of this file:");
+    switch (st.st_mode & S_IFMT)
+    {
+        case S_IFSOCK: printf ("Socket \ n"); break;
+        case S_IFLNK: printf ("Link \ n"); break;
+        case S_IFREG: printf ("Normal file \ n"); break;
+        case S_IFBLK: printf ("Block device \ n"); break;
+        case S_IFCHR: printf ("Character device \ n"); break;
+        case S_IFIFO: printf ("FIFO \ n"); break;
+        case S_IFDIR: printf ("Director \ n"); break;
+        default: printf ("Unknown file type");
+    }
+    printf ("\ tSize:% lld bytes \ n", (long long) st.st_size);
+
+    if (S_IRUSR & st.st_mode) perm [0] = 'r';
+    if (S_IWUSR & st.st_mode) perm [1] = 'w';
+    if (S_IXUSR & st.st_mode) perm [2] = 'x';
+    if (S_IRGRP & st.st_mode) perm [3] = 'r';
+    if (S_IWGRP & st.st_mode) perm [4] = 'w';
+    if (S_IXGRP & st.st_mode) perm [5] = 'x';
+    if (S_IROTH & st.st_mode) perm [6] = 'r';
+    if (S_IWOTH & st.st_mode) perm [7] = 'w';
+    if (S_IXOTH & st.st_mode) perm [8] = 'x';
+
+    printf ("\ tPermissions:% s \ n", perm);
+
+    if (NULL! = (pwd = getpwuid (st.st_uid)))
+        printf ("\ tOwner:% s (with UID:% ld) \ n", pwd-> pw_name, (long) st.st_uid);
+    else
+        printf ("\ tOwner has UID:% ld \ n", (long) st.st_uid);
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Solutions for some of the additional exercises.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 Write a program C to perform the processing described below. Integers are written to a text file. To be calculated
+      the arithmetic mean for each group of numbers between two numbers with the value zero in the file. Write the respective values ​​on how many
+      a separate line from another text file (result). The beginning and end of the numbered file act as a number with the value zero.
+      The source and destination file names are specified as arguments to the program command line.
+
+
+Here is a complete solution, which also deals with all possible errors. Because the source and destination files contain numbers in text format and not in binary format,
+we will use the read / write functions in fscanf () / fprintf () format from the stdio.h library; read () / write () system calls could be used directly
+instead, but then the conversion functionalities from the representation of numbers in text format to
+binary number representation as well as inverse conversion (ie the functionalities offered by the fscanf () and fprintf () functions should be implemented,
+which is not the purpose of this exercise).
+
+lab7_ex4.c:
+============
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main (int argc, char * argv [])
+{
+    if (argc <3)
+    {
+        fprintf (stderr, "Usage:% s file-source file-destination \ n", argv [0]);
+        exit (1);
+    }
+    if (-1 == access (argv [1], R_OK))
+    {
+        fprintf (stderr, "Error accessing% s. \ t", argv [1]);
+        perror ("The cause is");
+        exit (2);
+    }
+
+    FILE * f_source, * f_dest;
+
+    if (NULL == (f_source = fopen (argv [1], "r")))
+    {
+        fprintf (stderr, "Error reading read-only file% s \ n", argv [1]);
+        perror ("The cause is");
+        exit (3);
+    }
+    if (NULL == (f_dest = fopen (argv [2], "w")))
+    {
+        fprintf (stderr, "Error opening write-only file% s \ n", argv [2]);
+        perror ("The cause is");
+        exit (4);
+    }
+
+    int val = 0, nr = 0, sum = 0;
+
+    while (1) / * while (! feof (f_source)) * /
+    {
+        int cod_r;
+        cod_r = fscanf (f_source, "% d", & val);
+        if (cod_r == EOF) break; / * call feof () returns true only after an fscanf () / fread () call "reads" the End-Of-File position,
+                                   situation in which our wave variable will remain with the old value (from the previous iteration),
+                                   so we have to make sure we don't process the last number in the file twice !!! * /
+        if (cod_r! = 1)
+        {
+            fprintf (stderr, "Error reading file% s \ n", argv [1]);
+            perror ("The cause is");
+            exit (5);
+        }
+        if (0! = val)
+        {
+            sum + = val;
+            nr ++;
+            printf ("% d% d% d \ n", val, sum, nr);
+        }
+        else / * I found a zero indicating the end of a group of numbers * /
+        {
+            if (0! = nr) fprintf (f_dest, "%. 2f \ n", (float) sum / nr); / * we make sure we have at least one number in the group, otherwise it is a zero division * /
+            sum = 0;
+            nr = 0;
+        }
+    }
+    if (0! = nr) fprintf (f_dest, "%. 2f \ n", (float) sum / nr); / * last group of numbers * /
+
+    fclose (f_source);
+    fclose (f_dest);
+    return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 In a text file are written lines of text in the form: two integers followed by a character, which can be '+', '-', '*' or '/'.
+      Write a C program that reads the Nth line of the file, performs the operation between the two numbers, and then writes to another text file
+      a shape line: nr1 operator nr2 = result. The result line will be added to the end of the result file. Order number N of the line
+      targeted from the source text file, as well as the name of the source file and the resulting file are specified as arguments on the command line.
+
+
+Here is a complete solution, which also deals with all possible errors. Because the source and destination files contain numbers in text format and not in binary format,
+we will use the read / write functions in fscanf () / fprintf () format from the stdio.h library; read () / write () system calls could be used directly
+instead, but then the conversion functionalities from the representation of numbers in text format to
+binary number representation as well as inverse conversion (ie the functionalities offered by the fscanf () and fprintf () functions should be implemented,
+which is not the purpose of this exercise).
+
+lab7_ex5.c:
+============
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+
+/ * extern int errno; // variable declared in the header file errno.h * /
+
+int main (int argc, char * argv [])
+{
+    if (argc <4)
+    {
+        fprintf (stderr, "Usage:% s N file-source file-destination \ n", argv [0]);
+        exit (1);
+    }
+    if (-1 == access (argv [2], R_OK))
+    {
+        fprintf (stderr, "Error accessing% s. \ t", argv [2]);
+        perror ("The cause is");
+        exit (2);
+    }
+
+    long int N;
+
+    errno = 0; / * To distinguish success / failure after call * /
+
+    N = strtol (argv [1], NULL, 10); / * conversion * /
+
+    if (errno! = 0)
+    {
+        fprintf (stderr, "Numeric conversion error for parameter:% s \ n", argv [1]);
+        exit (3);
+    }
+    if (N <= 0)
+    {
+        fprintf (stderr, "Error: parameter N must be positive number. \ n");
+        exit (4);
+    }
+
+    FILE * f_source, * f_dest;
+
+    if (NULL == (f_source = fopen (argv [2], "r")))
+    {
+        fprintf (stderr, "Error reading read-only file% s \ n", argv [2]);
+        perror ("The cause is");
+        exit (5);
+    }
+    if (NULL == (f_dest = fopen (argv [3], "a")))
+    {
+        fprintf (stderr, "Error opening write-only with append file% s \ n", argv [3]);
+        perror ("The cause is");
+        exit (6);
+    }
+
+    int current_line = 0, no1, no2, valid = 1;
+    float result;
+    char ch;
+
+    while (! feof (f_source))
+    {
+        int cod_r;
+        cod_r = fscanf (f_source, "% d% d% c \ n", & nr1, & nr2, & ch);
+        if ((cod_r! = 3) && (cod_r! = EOF))
+        {
+            fprintf (stderr, "Error: line% d in file% s does not match the format specified in the problem statement. \ n", current_line, argv [1]);
+            exit (7);
+        }
+
+        current_line ++;
+        if (current_line == N)
+        {
+            switch (ch)
+            {
+                case '+': result = nr1 + nr2; break;
+                case '-': result = nr1 - nr2; break;
+                case '*': result = nr1 * nr2; break;
+                case '/': if (nr2 == 0)
+                          {
+                              fprintf (stderr, "Impossible operation:% d% c% d (zero division) \ n", nr1, ch, nr2);
+                              valid = 0;
+                          }
+                          else result = (float) nr1 / nr2;
+                          break;
+                default: fprintf (stderr, "Unknown operator:% ch \ n", ch);
+                          valid = 0;
+            }
+            if (valid)
+            {
+                fprintf (f_dest, "% d% c% d =% .2f \ n", nr1, ch, nr2, result);
+            }
+            valid = 1;
+            break;
+        }
+    }
+
+    if (current_line <N)
+    {
+        fprintf (stderr, "Error: line% ld does not exist in source file (it has only% d lines). \ n", N, current_line);
+    }
+
+    fclose (f_source);
+    fclose (f_dest);
+    return 0;
+}
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Write a C program that implements the wc command, including with its options -c, -w, -l and -L.
+       (Attention: it is required to write C code that performs the same functionality as the toilet command, so not in the sense of calling directly
+       wc command in a C program using the system () function.)
+
+
+a) Here is a first solution, incomplete and not optimized:
+
+lab7_ex6a.c:
+=============
+
+/ *
+* The first solution, incomplete: the treatment of the -L option was not implemented
+*
+* It is not optimized: the 3 numbers are always calculated, but only those for which the option is present are displayed.
+* /
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+int main (int argc, char * argv [])
+{
+    int no_bytes, no_words, no_lines; // no. of bytes, no. of words, no. of lines of text, the maximum length of a line of text
+    int last; // state (what is the last character / area read to the current position): 0 - at the beginning of the file, 1 - word, 2 - white space area
+    int fc, fw, fn; // flags for the options present in the command line, respectively -c, -w, -n, -L
+    int i, ch;
+    char * filename = NULL;
+    FILE * fd;
+
+    no_bytes = no_words = no_lines = 0;
+    last = 0;
+    fc = fw = fn = 0;
+
+    // parsing the command line to find the file name and options
+    for (i = 1; i <argc; i ++)
+    {
+        if (0 == strcmp (argv [i], "- c")) fc = 1;
+        else if (0 == strcmp (argv [i], "- w")) fw = 1;
+            else if (0 == strcmp (argv [i], "- n")) fn = 1;
+                else if (! filename) filename = argv [i];
+                    else {printf ("The program accepts (for now) a single file name, not several! \ n"); exit (1); }
+    }
+    if ((argc == 1) || (filename == NULL))
+    {
+        fprintf (stderr, "You forgot to specify the filename to process! \ n");
+        exit (2);
+    }
+
+    if (0 == fc + fw + fn)
+        fc = fw = fn = 1; // if no option is present in the command line, we consider the three similar to the toilet command
+
+    // open the file to be processed
+    if (NULL == (fd = fopen (filename, "r")))
+    {
+        perror ("Error opening file to process! \ n");
+        exit (1);
+    }
+
+    // go through the file and calculate all three numbers
+    while (1)
+    {
+        ch = fgetc (fd);
+        if (feof (fd)) break;
+
+        no_bytes ++;
+
+        if (isspace (ch))
+        {
+            if (last == 1) {no_words ++; }
+            last = 2;
+        }
+        else
+            last = 1;
+
+        if (ch == '\ n') {no_lines ++; }
+    }
+
+    // at the end of the file, if we have state 1, the number of words must be incremented
+    // and if the last character was not '\ n', the number of lines must be incremented
+    if (last == 1) {no_words ++; }
+    // if (ch! = '\ n') {no_lines ++; } // we don't do that anymore, because the toilet control doesn't do it either!
+
+    // the display follows
+    printf ("File% s contains:", filename);
+    if (fc) printf ("% d characters (bytes),", no_bytes);
+    if (fw) printf ("% d words,", no_words);
+    if (fn) printf ("% d lines of text.", no_lines);
+    printf ("\ n");
+
+    return 0;
+}
+
+
+b) The second solution, complete and optimized:
+
+lab7_ex6b.c:
+=============
+
+/ *
+* The second solution, complete: the treatment of the -L option was implemented
+*
+* It is optimized: the 4 numbers are not always calculated, but only those for which the option is present.
+* /
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+int main (int argc, char * argv [])
+{
+    unsigned long no_bytes, no_words; // no. of bytes, no. of words
+    unsigned int no_lines, max_length; // no. of lines of text, the maximum length of a line of text
+    unsigned char last; // status (what is the last character / area read up to the current position):
+                            // 0 - at the beginning of the file, 1 - word, 2 - white space area
+    unsigned char fc, fw, fn, fL; // flags for the options present in the command line, respectively -c, -w, -n, -L
+    unsigned int iterator, no_chars_per_line = 0;
+    unsigned char ch;
+    char * filename = NULL;
+    FILE * fd;
+
+    no_bytes = no_words = no_lines = max_length = 0;
+    last = 0;
+    fc = fw = fn = fL = 0;
+
+    / * parsing the command line to find the file name and options * /
+    for (iterator = 1; iterator <argc; iterator ++)
+    {
+        if (0 == strcmp (argv [iterator], "- c")) fc = 1;
+        else if (0 == strcmp (argv [iterator], "- w")) fw = 1;
+            else if (0 == strcmp (argv [iterator], "- n")) fn = 1;
+                else if (0 == strcmp (argv [iterator], "- L")) fL = 1;
+                    else if (! filename) filename = argv [iterator];
+                        else {printf ("The program accepts (for now) a single file name, not several! \ n"); exit (1); }
+    }
+    if ((argc == 1) || (filename == NULL))
+    {
+        fprintf (stderr, "You forgot to specify the filename to process! \ n");
+        exit (2);
+    }
+
+    if (0 == fc + fw + fn + fL)
+        fc = fw = fn = 1; // if no option is present in the command line, we consider the three similar to the toilet command
+
+    / * we open the file to be processed * /
+    if (NULL == (fd = fopen (filename, "r")))
+    {
+        perror ("Error opening file to process! \ n");
+        exit (1);
+    }
+
+    / * we go through the file and calculate what is required * /
+    while (1)
+    {
+        ch = fgetc (fd);
+        if (feof (fd)) break;
+
+        / * only if the -c option is present, we do the calculations to count the bytes * /
+        // if (fc) {no_bytes ++; }
+        no_bytes ++; // is more efficient this way, because an if test is more expensive than an increment
+
+        / * only if the -w option is present, we do the calculations to count the words * /
+        if (fw)
+        {
+            if (isspace (ch))
+            {
+                if (last == 1) {no_words ++; }
+                last = 2;
+            }
+            else
+                last = 1;
+        }
+
+        / * only if the -n option is present, we do the calculations to count the lines of text * /
+        if (fn)
+        {
+            if (ch == '\ n') {no_lines ++; }
+        }
+
+        / * only if the -L option is present, we do the calculations to find out the maximum length of the text lines * /
+        if (fL)
+        {
+           if (ch! = '\ n')
+           {
+              if (ch == '\ t')
+                  no_chars_per_line + = 8; // the toilet command counts 8 positions for each TAB character
+              else
+                  no_chars_per_line ++;
+           }
+           else
+           {
+              if (max_length <no_chars_per_line) {max_length = no_chars_per_line; }
+              no_chars_per_line = 0;
+           }
+        }
+    }
+
+    / * At the end of the file we have three things to do: * /
+
+    / * a) if the status is 1, the number of words must be incremented * /
+    if (fw)
+    {
+        if (last == 1) {no_words ++; }
+    }
+
+    / * b) if the last character was not '\ n', the number of lines must be incremented * /
+    // if (fn)
+    // {
+    // if (ch! = '\ n') {no_lines ++; }
+    //}
+    // Note: we don't do this action b) anymore, because the toilet command doesn't do it either (basically, the toilet doesn't count the lines of text, but the newline characters!)
+
+    / * c) if the last character was not '\ n', it must be seen if the last line is not of maximum length * /
+    if (fL)
+    {
+        if (ch! = '\ n')
+        {
+            if (max_length <no_chars_per_line) {max_length = no_chars_per_line; }
+        }
+    }
+
+    / * the numbers corresponding to the specified options are displayed * /
+    printf ("File% s contains:", filename);
+    if (fc) printf ("% lu characters (bytes),", no_bytes);
+    if (fw) printf ("% lu cuvinte,", no_words);
+    if (fn) printf ("% u lines of text,", no_lines);
+    if (fL) printf ("% u maximum length of lines of text.", max_length);
+    printf ("\ n");
+
+    return 0;
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 Write a C program that implements the cp command, including its -i and -u options.
+      (Warning: it is required to write C code that performs the same functionality as the cp command, so not in the sense of calling directly
+      cp command from a C program using the system () function.)
+
+
+Here is a complete solution, which also deals with all possible errors.
+
+lab7_ex7.c:
+============
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys / stat.h>
+#include <unistd.h>
+#include <time.h>
+
+int copy_opts_i_u (char * source_name, char * dest_name, int flag_opt_i, int flag_opt_u);
+
+int main (int argc, char * argv [])
+{
+    int i, flag_opt_i = 0, flag_opt_u = 0;
+    char * source_name = NULL;
+    char * num_dest = NULL;
+
+    if (argc <3)
+    {
+        fprintf (stderr, "Usage:% s [-i] [-u] file-source file-destination \ n", argv [0]);
+        exit (1);
+    }
+
+    / * We process command line arguments to identify the presence of -i and / or -u options, as well as
+       of source and destination file names.
+       Note: we will allow the -i and -u options to appear in any position on the command line.
+    * /
+    for (i = 1; i <argc; i ++)
+    {
+        if (strcmp (argv [i], "- i") == 0) {flag_opt_i = 1; continue; }
+        if (strcmp (argv [i], "- u") == 0) {flag_opt_u = 1; continue; }
+        if (source_name == NULL) {source_name = argv [i]; continue; }
+        if (name_dest == NULL) {name_dest = argv [i]; continue; }
+
+        fprintf (stderr, "Error: You did not follow the format required for command line arguments. \ n");
+        exit (2);
+    }
+
+    if (source_name == NULL) {fprintf (stderr, "Error: did not specify source file. \ n"); exit (3); }
+
+    if (name_dest == NULL) {fprintf (stderr, "Error: did not specify destination file. \ n"); exit (4); }
+
+    / * Now follows the call of a function that implements the copy functionality required in the statement * /
+    return copy_opts_i_u (source_name, name_dest, flag_opt_i, flag_opt_u);
+}
+
+
+int simple_copy (char * source_name, char * enough_name);
+
+int copy_opts_i_u (char * source_name, char * name_dest, int flag_opt_i, int flag_opt_u)
+{
+    if (access (source_name, R_OK)! = 0)
+    {
+        fprintf (stderr, "Error: source file% s is not accessible (i.e. does not exist, or I do not have read permission, or what?) \ t", source_name);
+        perror ("The exact cause is");
+        return 10;
+    }
+
+    int flag_dest_exists;
+
+    if (access (name_dest, F_OK) == 0) {flag_dest_exists = 1; } else {flag_dest_exists = 0; }
+
+    int flag_abort_copy = 0;
+
+    if (flag_dest_exists)
+    {
+        / * do we have to check the age of the destination? (-u option) * /
+        if (flag_opt_u)
+        {
+           struct state st_source, st_dest;
+
+           if (0! = status (source_name, & st_source))
+           {
+               fprintf (stderr, "Error in state for source file% s. \ t", source_name);
+               perror ("The cause is");
+               return 11;
+           }
+           if (0! = stat (right_name, & st_dest))
+           {
+               fprintf (stderr, "State error for destination file% s. \ t", dest_name);
+               perror ("The cause is");
+               return 12;
+           }
+
+           if (st_source.st_mtime> st_dest.st_mtime)
+           {
+               printf ("\ tSource% s has 'last modified time':% s", source_name, ctime (& st_source.st_mtime));
+               printf ("\ tDestination% s has 'last modified time':% s", name_dest, ctime (& st_dest.st_mtime));
+               printf ("Notify message: the copy will be overwritten by the destination (because the source is newer than the destination). \ n");
+           }
+           else
+           {
+               flag_abort_copy = 1;
+               printf ("Source% s is not newer than destination% s. So DO NOT overwrite the destination with the source! \ n", source_name, enough_name);
+           }
+        }
+
+        / * do we still have to query the user? (-i option) * /
+        if (! flag_abort_copy && flag_opt_i)
+        {/ * we give priority to the -u option: if the destination is more recent, we don't ask the user anymore * /
+           char answer;
+
+           printf ("Destination file% s already exists (but is older than the source). Do you want to overwrite it? (Y / N) \ n", name_dest);
+           do{
+               scanf ("% s", & answer);
+               if ((answer! = 'D') && (answer! = 'N'))
+                   printf ("Answer with D or N. \ n");
+               else
+                   break;
+           } while (1);
+
+           if (answer == 'N')
+               flag_abort_copy = 1;
+           else
+               printf ("Notify message: the copy will be overwritten with the destination (with the user's consent). \ n");
+        }
+    }
+
+
+    if (! flag_abort_copy)
+    {
+         return simple_copy (source_name, dest_name);
+    }
+    else
+    {
+         fprintf (stderr, "Copying% s to% s failed. \ n", source_name, dest_name);
+         return 13;
+    }
+}
+
+
+int simple_copy (char * source_name, char * enough_name)
+{
+    FILE * f_source, * f_dest;
+    char ch;
+
+    if (NULL == (f_source = fopen (source_name, "r")))
+    {
+        fprintf (stderr, "Error opening source file% s \ n", source_name);
+        perror ("The cause is");
+        return 20;
+    }
+    if (NULL == (f_dest = fopen (name_dest, "w")))
+    {
+        fprintf (stderr, "Error opening destination file% s \ n", name_dest);
+        perror ("The cause is");
+        return 21;
+    }
+
+    while (1) / * while (! feof (f_source)) * /
+    {
+        int cod_r;
+        cod_r = fscanf (f_source, "% c", & ch);
+        if (cod_r == EOF) break; / * call feof () returns true only after an fscanf () / fread () call "reads" the End-Of-File position,
+                                   situation in which our variable ch will remain with the old value (from the previous iteration),
+                                   so we have to make sure we don't process the last character in the file twice !!! * /
+        if (cod_r! = 1)
+        {
+            fprintf (stderr, "Error reading file% s \ n", source_name);
+            perror ("The cause is");
+            return 22;
+        }
+
+        if (fprintf (f_dest, "% c", ch)! = 1)
+        {
+            fprintf (stderr, "Error writing to file% s \ n", dest_name);
+            perror ("The cause is");
+            return 23;
+        }
+
+    }
+    fclose (f_source);
+    fclose (f_dest);
+
+    printf ("Successfully copied source file% s to destination% s \ n", source_name, destination_name);
+    return 0;
+
+/ *
+  For efficiency, the physical reading on the disk must be done at the physical sector level, not at the level of individual bytes.
+  For this reason, for simplicity I used here the functions in the stdio.h library, which work buffer-ized.
+  Alternatively, if we use read / write system calls, each call should read / write not a single byte,
+  but a multiple of 512 bytes.
+* /
+}
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+8.-14. Try to solve them yourself.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

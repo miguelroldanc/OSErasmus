@@ -1,0 +1,433 @@
+Here are some possible solutions for the exercises in the third lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+I) Chained commands exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Write the command that calculates how many (human) user accounts exist in the system.
+      Additionally: filter accounts associated with system programs (i.e., those that do not have / bin / bash as the login shell).
+      (Hint: use the wc command and the information in the / etc / passwd file; for the extra part, use the grep command
+      for the required filtering and chain it with the toilet control.)
+
+grep / bin / bash / etc / passwd | wc -l
+
+Or, another solution with just one simple command:
+
+grep -c / bin / bash / etc / passwd
+
+
+Additionally: if we only want accounts that are associated with system programs, then:
+
+grep -v / bin / bash / etc / passwd | wc -l
+
+or
+
+grep -v / bin / bash / etc / passwd -c
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Write the command that displays the total number of users who are members of the studs group.
+      (Hint: use the command from an exercise in the previous lab, chained with the cut and toilet controls, each called with the appropriate options.)
+
+
+A first idea would be to select the lines in / etc / passwd that contain the "studs" template (or "/ fenrir / studs"), based on the observation that the home directory of
+student accounts has the form / fenrir / studs / username:
+
+grep studs / etc / passwd | wc -l
+
+Or, another solution using just one simple command:
+
+grep -c studs / etc / passwd
+
+However, the number displayed by the above chains does not reflect reality, which we can be convinced of if we replace the "studs" template with the "202" template,
+starting from the observation that the students' GID is 202:
+
+grep 202 / etc / passwd | wc -l
+
+Is the number displayed by this last chain correct? Not necessarily, because this will also count the lines that contain a UID or a GID of the form
+3202, 2024, 10202, 12027, etc. (i.e. numbers in which 202 appears as a subword).
+
+To remove such numbers, we can force 202 to be preceded and followed by the field delimiter character in / etc / passwd:
+
+grep: 202: / etc / passwd | wc -l
+
+Even now, however, we do not have the guarantee of the correct answer, because the above chain would also count a potential user with UID 202 and in another group.
+
+
+The chain that correctly counts how many users are in the studs group on the fenrir server, ignoring all of the above exceptions, is as follows:
+
+cut -f4 -d: / etc / passwd | grep -w 202 | wc -l
+
+Or, with fewer simple chain commands, we can write:
+
+cut -f4 -d: / etc / passwd | grep -w 202 -c
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write the command that will write, in the user-logati.txt file, the account names of all users present in the system at the time
+      order execution, in alphabetical order (and unique).
+      (Hint: use any of the who or finger commands, chained with the cut command and then with the sort command, each called with the options
+      adequate. Alternatively, you can start the chain with the users command, in which case you will also need the tr command.)
+
+The chain that starts from the who command:
+
+who | cut -f1 -d "" | sort -u -o logged-in.txt
+
+Chain starting from the finger command:
+
+finger | grep -v Login | cut -f1 -d "" | sort -u> logged-users.txt
+
+Here the simple command in the 'grep -v Login' chain has the role of removing the header displayed by the finger command.
+But do we have the guarantee of the correct answer? If there is any other line that contains the word 'Login'?
+Another solution is to use the tail command, with an argument that specifies the display of all lines from the second line to the end:
+
+finger | tail -n +2 | cut -f1 -d "" | sort -u> logged-users.txt
+
+
+The chain that starts with the users command:
+
+users | tr "" "\ n" | sort -u -o logged-in.txt
+
+
+Note: another possible idea, but it doesn't work (the cut command doesn't "like" the newline in the string it replaces the delimiter with)
+
+users | cut -f1- -d "" --output-delimiter = "\ n" | sort -u> logged-users.txt
+
+
+Note: you can start in the construction of the chain and from the ps command, conveniently choosing from its options the one that displays information
+about the owners of the processes selected for display:
+
+ps --no-header -a -o user | sort -u
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 Write the command that displays (uniquely) all the shells used by the system users.
+      (Hint: use simple command strings and information from the / etc / passwd file.)
+
+cut -f7 -d: / etc / passwd | sort -u
+
+Or, with an additional chain command:
+
+cut -f7 -d: / etc / passwd | sort | uniq
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 Write the command that shows how many of the system users contain "ana" in the account name, but not in the context of "diana".
+      (Hint: use simple command strings and information from the / etc / passwd file.)
+
+cut -d: -f1 / etc / passwd | grep ana | grep -v diana | wc -l
+
+Note: the order of the two greps can be reversed, obtaining the same result. But such a solution is less efficient in terms of execution time,
+due to the larger volume of information that spreads through the chain of commands.
+
+
+Or, a chain with one less command:
+
+cut -d: -f1 / etc / passwd | grep ana | grep -v diana -c
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Write the command that displays the total number of processes (run in all open sessions) of the user with the account name
+      specified as the command parameter.
+      (Hint: process the results displayed by the ps command, called with the appropriate options.)
+
+Using the detailed syntax of the ps command:
+
+ps -U user_arg -o pid = | wc -l
+
+Note: the -U option of the ps command selects only the processes run by the specified user, and the -o pid = option sets as display columns only
+a single information field, which will list the PIDs of the selected processes, and without a first header line with the names of the displayed fields.
+
+Or, with a grep or tail process to remove the header line displayed by ps:
+
+ps -U arg_user | grep -v PID -c
+
+ps -U arg_user | tail -n +2 | wc -l
+
+Or we can use the --no-headers option:
+
+ps --no-headers -U arg_user | wc -l
+
+
+Note: another idea would be to use the BSD-style syntax of the ps command, but that doesn't work:
+
+ps axu | grep -c arg_user
+
+Note: The axis options select all processes in the system, of all users, including those without an associated terminal. And the u option displays a series
+of information columns, of which the first column is the USER, but not for all users it displays the username, for some it displays the UID,
+so chaining with the grep command after the username doesn't work for everyone.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 Write the command that displays the real name, UID and GID for all system users, in the format "UID-> GID-> First Name Last Name",
+      sort ascending by UID.
+      (Hint: use simple command strings and information from the / etc / passwd file.)
+
+cut -f3-5 -d: / etc / passwd --output-delimiter = "->" | cut -f1 -d, | sort -n
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.8 Write the command that displays the date and time of login and the computer from which the login was made, for all open sessions,
+      at the time the command is executed, by a user specified as the command argument.
+      (Hint: Use simple command strings to process information about users currently connected to the system.)
+
+Chain starting from the finger command:
+
+finger | grep arg_user | cut -b 49-
+
+The chain that starts from the who command:
+
+who | grep arg_user | tr -s "" | cut -d "" -f3-
+
+Remarks:
+
+1) Does not go with the chain: who | grep arg_user | cut -b N-
+   because there is no single value for N, since the who command produces columns of unequal size;
+
+2) Does not go with the chain: finger | grep arg_user | tr -s "" | cut -d "" -fN-
+   because there is no single value for N, as the number of words in the users' real name is variable (2, 3, or 4 words).
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.9 Write the command that displays the last 15 users connected to the system, depending on the time of connection, as well as
+      the date, time and station from which they connected.
+      (Hint: Use simple command strings to process information about users currently connected to the system.)
+
+The chain that starts from the who command:
+
+who | tr -s "" | cut -d "" -f1,3-5 | sort -k 2,3 -t "" -r | head -15
+
+Or a shorter chain, using the last command:
+
+last -15 | cut -c1-8,20-55 | grep -v wtmp
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.10 Write the command that displays for each user connected to the system, the account name, the station from which it was connected and
+       the process run in foreground, in alphabetical order of account names.
+       (Hint: Use simple command strings to process information about users currently connected to the system.)
+
+A chain starting from the w command (w is the only command that displays both the docking station and the run process):
+
+w | grep -vi user | cut -c1-8,17-34,64-
+
+Note: the command 'grep -vi user' gets rid of the first two header lines displayed by the command w (these lines contain the subword 'user' in the form
+users on the first line, respectively USER on the second line).
+ 
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.11 Write the command that displays the account name and the real name of the users connected to the system, whose first name ends with the letter 'a'.
+       (Hint: use simple command strings, processing information about users currently connected to the system.
+       For the grep command, use the regular expression that expresses that the line of text ends with a specific pattern.)
+
+A chain starting from the finger command:
+
+finger -lp | grep Login | grep a $
+
+Note: We cannot start the chain from the who or users commands, as they do not display the real names of the users connected to the system.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.12 Write the command that writes in the a.txt file the account name of all connected users, whose account name starts with the letter 'a'.
+       (Hint: the solution is similar to the previous exercise.)
+
+A chain starting from the who command:
+
+who | cut -f1 -d "" | grep ^ a> a.txt
+
+Or, a chain starting from the finger command:
+
+finger | grep -v Login | cut -f1 -d "" | grep ^ a> a.txt
+
+Or, a chain starting from the users command:
+
+users | tr "" "\ n" | grep ^ a> a.txt
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.13 Write the command that displays all system users who have a UID greater than (or equal to) 5000.
+       (Hint: use simple command strings and information in the / etc / passwd file. To describe numbers greater than or equal to 5000,
+       you can use the egrep command with a regular expression template.)
+
+We start the chain by filtering the username and UID fields from / etc / passwd, obtaining an information column of the form username: UID. Then you have to
+processed this column as follows: we use the UID field to select only the lines that contain numbers greater than or equal to 5000, then we keep only
+the username field for the final display.
+
+For the desired selection we use a regular expression as a search template for the grep command, namely the expression:
+"the character ':', followed by a number from 5 to 9 and followed by at least 3 digits (any)",
+thus ensuring that the selected expression number will be greater than or equal to 5000:
+
+cut -d: -f1,3 / etc / passwd | grep -E: [5-9] [0-9] [0-9] [0-9] | cut -d: -f1
+
+Or, equivalent, we can also write:
+
+cut -d: -f1,3 / etc / passwd | grep -E: [5-9] [[: digit:]] {3 \,} | cut -d: -f1
+
+
+Observation:
+
+The above regular expressions have a drawback, namely they do not select the numbers between 10000 and 49999 (there are already accounts with UIDs on fenrir
+over 10000), nor those between 100000 and 499999, between 1000000 and 4999999, etc.
+To remedy this shortcoming, we need a regular expression of the form:
+"the character ':', followed by a digit from 5 to 9, and this followed by exactly (or at least) 3 digits (any) OR the character ':', followed by a digit
+from 1 to 9, and this followed by at least 4 digits (any) ".
+
+So the complete solution would be the following:
+
+cut -d: -f1,3 / etc / passwd | grep -E: [5-9] [0-9] [0-9] [0-9] \ |: [1-9] [0-9] [0-9] [0-9] [0- 9] | cut -d: -f1
+
+Or, equivalent, we can also write:
+
+cut -d: -f1,3 / etc / passwd | grep -E: [5-9] [[: digit:]] {3} \ |: [1-9] [[: digit:]] {4 \,} | cut -d: -f1
+
+cut -d: -f1,3 / etc / passwd | grep -E ": [5-9] [[: digit:]] {3} |: [1-9] [[: digit:]] {4,}" | cut -d: -f1
+
+Note: characters | and, from the regular expression must be protected (preceded by \ or placed between "") so as not to be interpreted specifically by bash.
+
+
+Additional question:
+
+If instead of the minimum limit 5000, it were a more "irregular" number, ie consisting of various digits, what could we do?
+
+For example, a regular expression for "... have a UID greater than 5432" would be as follows:
+  ": 5 [4-9] [3-9] [2-9] |: [6-9] [0-9] [0-9] [0-9] |: [1-9] [0- 9] [0-9] [0-9] [0-9] "
+or equivalent:
+  ": 5 [4-9] [3-9] [2-9] |: [6-9] [[: digit:]] {3} |: [1-9] [[: digit:]] { 4,} "
+
+That is: select the numbers between 5432 and 5999, or those between 6000 and 9999, or all numbers greater than 10000.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+II) Experimental exercise with the files for initiating a working session:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Following the given indication, for the 4 possible situations, you should come to the following conclusion:
+
+At most one initialization file is running, and only if there is one!
+Specifically, when both exist, only the .bash_profile script is executed, not the other one.
+
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+III) Experimental exercise with I / O redirects:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Following the given indication, give the command as an example:
+
+ls -l ~ / .bash_profile ~ / My Mail
+
+when executed directly, without any redirection, it will produce two lines on the screen:
+- a line with an error message like "ls: cannot access ~ / My Mail: No such file or directory"
+  (line that is actually displayed on the device the standard error output);
+- and a line with information about the ~ / .bash_profile file
+  (line that is actually displayed on the standard normal output device).
+
+Executing this command in turn with the 8 forms of redirection in the statement of the exercise, check in each case separately
+if each of the 2 lines described above appears either on the screen or in the file, or does not appear at all.
+
+The conclusion you should reach is that the order in which redirects appear on the command line is essential for the effect
+end of order execution.
+
+And another conclusion you should draw is that 4 of the 8 forms of redirection are syntactically incorrect, namely that
+the bash interpreter does not support a redirect of the form n >> & m (where n, m are natural numbers).
+
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+IV) Exercise with command files:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Write a script that lists all the parameters in the call line as: param_i = value of the second parameter,
+with i taking values ​​from 1 to the total number of parameters.
+
+
+a) First solution - we use a for structure to go through the list of parameters, stored in the dynamic variable $ @:
+
+lab3_ex-sol1.sh:
+================
+
+#! / bin / bash
+i = 0
+for parameter in $ @
+do
+  let i = i + 1
+  echo "param_ $ i = $ parameter"
+done
+
+
+b) The second solution, a minor variation of the first solution - we use the other dynamic variable $ * and, in addition, the increment operation is written differently:
+
+lab3_ex-sol2.sh:
+================
+
+#! / bin / bash
+i = 0
+for parameter in $ *
+do
+  let i ++
+  echo "param_ $ i = $ parameter"
+done
+
+
+c) The third solution - we use a different idea: the internal shift command, which moves to the left with a position all parameters $ 1 $ 2 ... $ 9, and
+updates the variables $ #, $ @ and $ * accordingly. Basically, at each iteration we do a shift and display the current parameter $ 1,
+which will be in turn parameter 1, then the 2nd, then the 3rd, and so on. from the initial call line. In addition, we use a while structure instead of for:
+
+lab3_ex-sol3.sh:
+================
+
+#! / bin / bash
+i = 0
+while test! $ # -eq 0
+do
+  let i + = 1
+  echo param_ $ i = $ 1
+  shift
+done
+
+
+d) The fourth solution - let's try another idea: can we write something in the form $$ i? You mean, like, saltines and their ilk, eh?
+The answer is yes, you can use the eval internal command (see the example in the course presentation) as follows:
+
+lab3_ex-sol4.sh:
+================
+
+#! / bin / bash
+i = 0
+while test $ i -lt $ #
+do
+  let i + = 1
+  eval p_i = \ $$ i
+  echo param_ $ i = $ p_i
+done
+
+
+Or: also with a double substitution effect, another special form of 'parameter expansion' can be used in the bash shell, namely the form {! Variable}:
+
+lab3_ex-sol5.sh:
+================
+
+#! / bin / bash
+i = 0
+while test $ i -lt $ #
+do
+  let i + = 1
+  echo param_ $ i = $ {! i}
+done
+
+Notice above the use of the construction $ {! I} which has the effect of a double substitution: first substitute {! I} with the value of the variable i,
+resulting in a number k (between 1 and the total number of parameters from the script call), and then substituting $ k for
+the kth parameter from the script call.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

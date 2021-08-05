@@ -1,0 +1,626 @@
+Here are some possible solutions for the exercises in the fifth lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Write a script that calculates and displays the total number of ordinary files that are "hidden" (i.e. their name starts with the character '.'),
+      the total number of alias files (count only symbolic links) and the total number of subdirectories in a given directory,
+      scrolling through that directory recursively.
+      The name of the start directory is transmitted as a parameter on the command line, or it will be read by the read command otherwise.
+      (Hint: scroll through the current directory and calculate the required information, and for each entry in the directory
+      which is of type (sub) directory recursively call the script.)
+      Additionally: display that total information for each subdirectory traversed.
+
+Solution idea:
+- recursion can be implemented in two different ways: either by recursive function call, or by recursive script call;
+- the statistics (i.e. the values ​​required to be calculated in the statement of the problem) are calculated in a manner similar to that of the given solutions
+  below in exercise 4 (note: also read carefully the observation at the end of the solutions given for exercise 4).
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Write a script that calculates the total number of words and the length of the lines of text, respectively, of all the files that contain
+      plain text (i.e. files for which the tab command reports "ASCII text") in a given directory, scrolling through that directory recursively.
+      The directory name is passed as a parameter on the command line, or it will be read by the read command otherwise.
+      (Hint: scroll through the current directory and calculate the required information, and for each entry in the directory
+      which is of type (sub) directory recursively call the script.)
+      Additionally: display that total information for each subdirectory traversed.
+
+Solution idea:
+- similar to exercise 1, recursion can be implemented in two different ways: either by recursive function call, or by recursive script call;
+- the statistics (i.e. the values ​​required to be calculated in the statement of the problem) are calculated in a manner similar to that in the solution given below
+in exercise 5.
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write a script to perform the following steps in a loop:
+       1) reads from the keyboard two numbers and an operator +, -, * or /
+       2) perform the respective operation
+       3) write the result, on a new line, in a file, in the form: operation_no: operand1 operator operand2 = result
+       4) resume loop
+      From the respective loop it will exit when entering the character q on the position of the operator.
+      Before completion, the total number of operations performed will be written to the file.
+      The name of the file being written is received as a parameter on the command line, or it will be read by the read command otherwise.
+
+
+lab5_ex3.sh:
+=============
+#! / bin / bash
+### arithmetic calculator
+
+if [$ # -eq 1]; then
+    file = $ 1
+else
+    echo in "Name the file:"; read file
+be
+
+nr_op = 0
+opd = "start"
+echo> $ file
+
+until ["$ opd" = "q"]
+do
+    echo in "Give the first number:"; read op1
+    echo -n "Give the second number:"; read op2
+    echo -n "Give the operator:"; read opd
+
+    let nr_op ++
+    case "$ opd" in
+        "+") let rez = op1 + op2 ;;
+        "-") let rez = op1-op2 ;;
+        "*") let rez = op1 * op2 ;;
+        "/") rez = `echo" scale = 5; $ op1 / $ op2 "| bc -l` ;;
+    esac
+    echo "$ nr_op: $ op1 $ opd $ op2 = $ rez" >> $ file
+done
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Solutions for some of the additional exercises.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4 Write a script that calculates and displays the total number of fifo files and the total number of subdirectories
+      located in a given directory, traversing the recursive directory.
+      The name of the start directory is transmitted as a parameter on the command line, or it will be read by the read command otherwise.
+      (Hint: scroll through the current directory and calculate the required information, and for each entry in the directory
+      which is of type (sub) directory recursively call the script.)
+      Additionally: display that total information for each subdirectory traversed.
+
+Solution idea:
+
+- Similar to the exercise with the recursive calculation of the factorial from the previous laboratory, we have the following implementation possibilities:
+
+i) recursion can be implemented in two different ways:
+  a) either by recursive function call (see first solution below),
+  b) either by recursive script call (see the other three solutions below), and in this case we must also take into account the call mode, i.e.
+  whether all calls from the same shell instance will be made, in which case we have "shared memory" between calls (see the third and fourth solutions below),
+  or each call will be executed by a new instance of the shell, in which case we NO longer have variables shared between calls (see the second solution below);
+
+ii) the intermediate values ​​of the statistics to be calculated recursively can be transmitted from one call to another in several ways, out of the four
+  illustrated in the calculation of the factorial: a) either by the termination code, b) or by "taking over", in the caller's command line, the value displayed on the call screen,
+  c) either by a global variable, d) or by a second call parameter of the function / script;
+  we can use any of the last three, so without variant a), which allows the transmission of a single value, and that very limited (to a byte without sign).
+
+- The novelties, compared to the recursive calculation of the factorial from the previous laboratory, are determined by the fact that now we have to process not a sequence of numbers, but a structure
+directory of filesystem files:
+
+iii) by recursion we descend deep into the file tree, and the horizontal movement, i.e. going through the entries in a directory, we do it with a repetitive structure of the type for:
+  for f in <lista-de-intrari-din-director>; do ...; done
+  And the list of entries in the directory that represents the argument from the current call, can be generated in two ways:
+  a) either with the command ls: $ (ls -A directory)
+  b) or with file specification templates: * and. *
+
+iv) another aspect that we need to take into account, is how do we manage the specification of the path to the current file, in the file tree traversed by recursion? We have two again
+possible implementation options:
+  a) either explicitly specify the path to the current input to be processed, i.e. $ directory / $ f (see first three solutions below)
+  b) either we change the current working directory to each recursive call, so that we can simply specify the current entry only by $ f (see the fourth solution below)
+
+
+a) First solution: we use a recursive function to scroll through the root tree subtree in the given directory.
+
+lab5_ex4a.sh:
+==============
+#! / bin / bash
+### recursively calculates the number of fifo files and subdirectories in a given directory
+### displays the total number of fifo files and subdirectories contained in it
+
+if [$ # -eq 0]
+then
+    echo in "Enter the name of the home directory:"
+    read numedir
+else
+    numedir = $ 1
+be
+
+nr_fif = 0
+nr_dir = 0
+
+director_range function ()
+{
+    for f in `ls -A $ 1`
+    do
+        path = $ 1 / $ f
+        if [-d $ cale]; then
+            let nr_dir ++
+            scroll_director $ path # recursive call
+        elif [-p $ cale]; then
+            let nr_fif ++
+        be
+    done
+}
+
+scroll_director $ name # initial call
+
+echo "The $ directory directory contains $ nr_dir directories and $ nr_fif fifo files."
+
+
+b) The second solution: instead of a recursive function, we use the recursive call of the script.
+
+Notice the call form of the script - it is the first of the call forms of a simple command, which creates a new shell process (i.e.
+the bash interpreter) running a new instance of the script. As such, since the variables nr_dir and nr_fif are local to each shell process
+in part, we can no longer just increment them as in the previous solution with recursively called function (where all calls are made in
+within a single shell process, no new process is created for each function call).
+For this reason, in order to be able to transmit the intermediate totals from the recursive calls of the script, we can use their writing on the screen.
+and takeover in the calling process with the special substitution command (Note: it does not work to use the termination code for this purpose,
+because there are 2 values ​​that must be transmitted to the calling process, plus we have the limitation of 1 byte to represent the termination code).
+
+lab5_ex4b.sh:
+==============
+#! / bin / bash
+### recursively calculates the number of fifo files and subdirectories in a given directory
+### displays the total number of fifo files and subdirectories contained in it
+
+if [$ # -eq 0]
+then
+    echo in "Enter the name of the home directory:"
+    read numedir
+else
+    numedir = $ 1
+be
+
+
+nr_fif = 0
+nr_dir = 0
+
+for f in `ls -A $ numedir`
+do
+    cale = $ numedir / $ f
+    if [-d $ cale]; then
+let nr_dir ++
+results = `$ 0 $ recursive_call path` # recursive call (in a new bash process) and taking over the 2 intermediate totals
+        let nr_dir + = `echo $ results | cut -f1 -d: `
+        let nr_fif + = `echo $ results | cut -f2 -d: `
+    elif [-p $ cale]; then
+let nr_fif ++
+    be
+done
+
+if test M $ 2 == Mapel_recursiv
+then # recursive calls
+  echo "$ nr_dir: $ nr_fif" # here we write on the screen the two numerical values ​​(they will be taken over in the calling process by substituting `...`)
+else # only the initial call
+  echo "The $ directory directory contains $ nr_dir subdirectories and $ nr_fif fifo files."
+be
+
+Note: note the use of M in both terms in the last test; it has only an auxiliary role, so that the test does not give a syntax error
+due to the fact that $ 2 is the empty string (which happens at the initial call of the script). Only recursive calls will receive a second
+parameter, the 'recursive_call' marker, in order to be able to display the results in a different format for recursive calls compared to the initial call.
+
+Note: This solution has a disadvantage - each recursive call produces a new shell process and as a result, if you call the script having as
+argument a directory for which the file subtree with the root in it has a depth of approx. 25 levels, you will reach the maximum limit of
+simultaneous processes per user fixed on the fenrir server.
+
+
+Next we will see how we can remove this disadvantage: we will use for the recursive call the third form of call of a simple command,
+valid only for scripts (ie the form with keywords. or source: source script [parameters]), which does not create a new
+shell process (i.e. the bash interpreter) to run the new instance of the script, but the entire current shell process will execute it.
+In this way, in addition to the possibility of transmitting the intermediate results by writing them on the screen and retrieving them with the special substitution
+command (as we did in the previous solution), we have a new possibility: the use of variables as in the first solution, the one with the function
+recursive, because this time we have a single shell process for the entire execution time of all script calls.
+
+
+c) The third solution: we use the recursive call of the script with the source and variable dialing form in which we count the totals.
+To differentiate the initial call from the recursive calls of the script, we will add a 'recursive_call' marker to the recursive calls as
+the second parameter only for recursive calls. It is necessary to make such a differentiation not only to display the total results only
+in the initial call (and not in the recursive ones), but also to initialize with zero only once, at the beginning, the two variables in which
+we count the number of subdirectories and files (similar to the first solution, the one with recursive function).
+
+lab5_ex4c.sh:
+==============
+#! / bin / bash
+### recursively calculates the number of fifo files and subdirectories in a given directory
+### displays the total number of fifo files and subdirectories contained in it
+
+case $ # in
+ 0) echo -n "Name the home directory:"
+     read cale ;;
+ 1) path = $ 1 ;;
+ 2) if test $ 2! = "Recursive_call"; then
+         echo "Something is wrong with the parameter (s) for the script ..." 1> & 2; exit 1
+     be
+     path = $ 1
+esac
+
+if test $ # -lt 2 # only the initial call
+then
+  if test! -d $ cale; then
+      echo "Error: given name does not exist as directory." 1> & 2; exit 2
+  be
+
+  nr_fif = 0 # initialization of these variables should only be done at the first initial call of the script
+  nr_dir = 0
+be
+
+for fis in `ls -A $ cale`
+do
+    if test -d $ cale / $ fis; then
+        let nr_dir ++
+        source $ 0 $ path / $ file recursive_call # recursive call in source form ...
+
+        # when returning from the recursion, the path before the call must be redone (because it is a single shell process,
+        # and as such the path variable will be changed during recursive calls)
+        # we can use the dirname command to restore the correct value for the path variable
+        path = `dirname $ path` # dirname will practically cut from the variable path the suffix / $ fis that was added to it after the recursive call
+
+    elif test -p $ cale / $ fis; then
+        let nr_fif ++
+    be
+done
+
+if test $ # -lt 2 # we make the display only at the end of the calculation, in the initial call of the script
+then
+    echo "The $ path directory contains $ nr_dir directories and $ nr_fif fifo files."
+be
+
+
+d) Fourth solution: similar to the third solution, i.e. we use the recursive call of the script with the source dialing form and variables in which
+we count the totals, as well as a marker to differentiate the initial call from the recursive calls of the script, which is necessary from the same
+reasons as in the third solution.
+The difference from the third solution is that we will eliminate the need to handle the current path argument (i.e. the path variable above),
+by simply dropping this parameter passed to the script. Instead we will use another idea: change the current working director
+before the recursive appeal and its recovery after returning from the recursive appeal.
+
+lab5_ex4d.sh:
+==============
+
+#! / bin / bash
+### recursively calculates the number of fifo files and subdirectories in a given directory
+### displays the total number of fifo files and subdirectories contained in it
+
+case $ # in
+ 0) echo -n "Name the home directory:"
+     read director_initial ;;
+ 1) initial_director = $ 1 ;;
+ 2) if test $ 1! = "Call" -o $ 2! = "Recursive"; then
+         echo "Something is wrong with the parameter (s) for the script ..." 1> & 2; exit 1
+     be
+esac
+
+if test $ # -lt 2 # only the initial call
+then
+  if test! -d $ initial_director; then
+      echo "Error: given name does not exist as directory." 1> & 2; exit 2
+  be
+  initial_wd = `pwd` # save the initial value of the current working directory (to restore it at the end)
+  cd $ initial_director # we change the current working directory to the given directory for the required calculations
+
+  nr_fif = 0 # initialization of these variables should only be done at the initial call of the script
+  nr_dir = 0
+be
+
+
+for fis in `ls -A`
+do
+    if test -d $ fis; then
+        let nr_dir ++
+        cd $ fis
+        source ~ / lab5_ex1d.sh recursive call # recursive call: script name must be specified by absolute path (or relative to home directory)
+        cd .. # (not relative to the current working directory, as it changes from one call to another)
+    elif test -p $ fis; then
+        let nr_fif ++
+    be
+done
+
+if test $ # -lt 2 # we make the display only at the end of the calculation, in the initial call of the script
+then
+    echo "The $ initial_directory directory contains $ nr_dir directories and $ nr_fif fifo files."
+    cd $ initial_wd # restore the initial value of the current working directory
+be
+
+Note: this time I used the recursive call marker instead of recursive_call to have 2 words, the first word (call) will be the first
+argument for recursive calls (because we no longer have a given path as an argument in these cases), and the second word (recursive) to have
+2 arguments to recursive calls. A single word can also be used as a marker (i.e. recursive_call), but then it must be changed in a way
+correspondingly the case and the 2 ifs used to differentiate the initial call from the recursive calls of the script.
+
+
+
+
+Common observation for all the above solutions:
+
+The results obtained will not take into account fifo files or subdirectories that contain spaces or tabs on their behalf,
+due to the evaluation of the enumeration in the structure "for variable in the word-list", which makes it impossible to protect the spaces in the name
+files and subdirectories obtained with the ls -A command (or with the * and. * templates).
+
+Repairing this shortcoming can be done, for example, using a single find command, which by default will recursively scroll through the given directory, and with the -exec cmd option
+it can be given an appropriate cmd command to update the metering variables.
+But this solution, with find, is not part of the purpose of this exercise, that of explicitly implementing the recursion through a script or a function
+to recursively scroll through explicit calls (!) the given directory. As such, we ignore the aforementioned shortcoming of the solutions proposed above.
+
+However, if you really want to deal with this situation, of files that contain spaces in the name, there is another solution, although not very elegant,
+however, to "protect", for the for command, the namespace of files and subdirectories obtained with the ls -A command (or with the * and. * templates).
+The idea is this:
+
+for f in $ (ls -1A | tr "" /)
+do
+  processes file with name: $ (echo $ f | tr / "")
+done
+
+Explanation: we replace spaces with an invalid character (i.e., which cannot appear in filenames) to generate the word list for the forum, and then
+we replace that "/" character with space to get the filename to be processed in the current iteration.
+
+Similarly, you can "protect" for the for command and any tab characters that may appear on behalf of files and subdirectories obtained with the ls -A command
+(or with the templates * and. *).
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 Write a script that calculates the total number of lines of text and characters, respectively, in all files in a directory,
+      by recursively traversing the given directory.
+      The directory name is passed as a parameter on the command line, or it will be read by the read command otherwise.
+      (Hint: scroll through the current directory and calculate the required information, and for each entry in the directory
+      which is of type (sub) directory recursively call the script.)
+      Additionally: display that total information for each subdirectory traversed.
+
+
+The exercise is solved similarly to the previous one, the recursive traversal of the file subtree can be done by any of the 4 illustrated methods
+above, only the calculated statistics are different.
+We will further illustrate only the first solution method from exercise 4, adapted for the calculations required for this exercise.
+
+lab5_ex5.sh:
+=============
+#! / bin / bash
+### recursively calculates the number of lines and the number of characters in all normal files in a given directory and in all its subdirectories
+### displays the total number of lines and the total number of characters calculated
+
+if [$ # -eq 0]
+then
+    echo in "Enter the name of the home directory:"
+    read numedir
+else
+    numedir = $ 1
+be
+
+nr_linii = 0
+nr_chars = 0
+
+director_range function ()
+{
+    for f in `ls -A $ 1`
+    do
+        path = $ 1 / $ f
+        if [-d $ cale]; then
+            scroll_director $ path # recursive call
+        elif [-f $ cale]; then
+    rezl = `wc -l $ cale | cut -d "" -f1` #or, equivalent: rezl = `cat $ cale | wc -l`
+rezc = `wc -c $ cale | cut -d "" -f1` #or, equivalent: rezc = `cat $ cale | wc -c`
+
+let nr_linii + = rezl
+let nr_chars + = rezc
+        be
+    done
+}
+
+scroll_director $ name # initial call
+
+echo "The $ name directory contains $ nr_lines lines of text and $ nr_chars characters in the files in it or in its subdirectories."
+
+
+Note: you can refine the statement of the problem, in the sense of taking into account only the text files, not the binary ones.
+In this case, you can use the tab command to detect which of the files are binary and which are text files, respectively.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Write a script that displays a tree with the structure of the directories in the personal account.
+
+lab5_ex6.sh:
+=============
+#! / bin / bash
+## displays a tree with the structure of the user's current working directory, or another directory specified as an argument
+
+indented_display function ()
+{
+# the function receives two arguments: the first is a directory name and the second is the current level in the tree (used
+# to create the indentation text used to display the tree)
+ 
+  for f in `ls -A $ 1` # we use the -A option instead of -a so as not to display the default entries. and ..
+  do
+      path = $ 1 / $ f
+
+      let level = $ 2 + 1
+      sir_indentation =
+      for i in `seq $ level`
+      do
+          indentation_sir = $ indentation_sir "->"
+      done
+      echo -e $ sir_indentare $ cale
+
+      if [-d $ path] # if it is a directory, call recursively
+      then
+          display_indented $ path $ level
+      be
+  done
+}
+
+if test $ # -eq 0; then numedir = `pwd`; else numedir = $ 1; be
+
+echo $ numedir
+indented_ display $ number 0
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 Write a script that displays all comments in the scripts in a directory specified as an argument (the scripts
+      will have a .sh extension to distinguish them from other types of text files).
+
+lab5_ex7.sh:
+=============
+#! / bin / bash
+
+list = `find $ 1 -name" * .sh "`
+for f in $ lista
+do
+    echo $ f
+    grep -n '#' $ f | grep -v '$ #' | grep -v '#!'
+done
+
+Note: the last two grep commands are to remove the lines where the special variable $ # appears, respectively to delete the line
+of the #! desired_shell form (usually at the beginning of scripts). Obviously, this way any comments will be lost on display
+written on the same line as the $ # or #! shell.
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.8 Write a script that receives as parameters d (a directory name) and n (a number). For each file for which the current user
+      has read and execute rights, located in the given directory as a parameter or in its subdirectories, to display the first n lines of text.
+
+lab5_ex8.sh:
+=============
+#! / bin / bash
+
+if [$ # -eq 2]
+then
+    if [-d $ 1]
+    then
+for f in `find $ 1 -type f` # recursive scrolling is obtained here with the find command
+do
+if [-r $ f -a -x $ f]
+then
+echo File $ f: the first $ 2 lines of text are as follows:
+head -n $ 2 $ f
+be
+done
+    else
+echo "The first argument must be director"
+exit 2
+    be
+else
+    echo "Usage: $ 0 directory number"
+    exit 1
+be
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.9 Write a script that receives a directory name as a parameter. The script will compile each C source file in that directory and
+      will print (i.e., display on the screen) the contents of each text file in this directory.
+
+lab5_ex9.sh:
+=============
+#! / bin / bash
+
+function comp ()
+{
+    out = `basename $ 1 .c`
+    gcc $ 1 -o $ out
+}
+
+function poster ()
+{
+    cat $ 1
+}
+
+if [$ # -eq 0]
+then
+    echo "Usage: $ 0 directory"
+    exit 1
+else
+    if [! -d $ 1]
+    then
+echo "The first argument must be the director!"
+exit 2
+    else
+for f in `ls -A $ 1`
+do
+case $ f in
+* .c) echo "source file C: $ f"; comp $ f ;;
+* .txt) echo "text file: $ f"; poster $ f ;;
+esac
+done
+    be
+be
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.10-13 Try to solve them yourself.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+II) Script for automating the C program development process:
+
+    Write a script to help you write programs in C, through which to
+    automate the development cycle: source modification -> compilation -> testing (execution).
+
+    Requirements: The script will launch the preferred editor for the filename.c file specified as a parameter on the command line (or read from
+    keyboard, otherwise it will then query the user if it wants to launch the compiler and if so it will do so (the file
+    executable to have the filename name, so without the suffix .c). Then, if there are compilation errors (observable by compilation errors
+    displayed by the compiler), will resume the editing cycle (of course with a pause so that the user has time to read the displayed errors
+    on the screen), and if there are no compilation errors, it will query the user if he wants to test (i.e., run) that program and in case
+    affirmatively it will execute that executable file resulting from the compilation.
+    In conclusion, at each step to make a query of the user if he wants to continue with the next step.
+
+
+editcomp.sh:
+=============
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo -n "Name the source file .c:"
+    read file
+else
+    file = $ 1
+be
+
+edt = 1
+
+while [$ edt -eq 1]
+do
+    mcedit $ file # will replace the mcedit command with the name of the preferred publisher
+
+    echo -n "Do you want to compile the program? (y / n)"
+    read ans
+    if [$ ans = "y"]
+    then
+        out = `basename $ file .c`
+        gcc $ file -o $ out # compile
+        if [$? -eq 0] # compile without errors
+        then
+            echo -n "Do you want to run the program? (y / n)"
+            read ans
+            if [$ ans = "y"]
+            then
+                ./$out
+                edt = 0
+            else
+                echo "Finished ..."
+                exit 0
+            be
+        else # compile errors
+            echo "Press <Enter> to continue ..."
+            read edt # this read only has a pause role
+            edt = 1
+        be
+    else
+        edt = 0
+    be
+done
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->

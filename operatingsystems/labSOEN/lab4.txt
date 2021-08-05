@@ -1,0 +1,1205 @@
+Here are some possible solutions for the exercises in the fourth lab:
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.1 Write a script to perform the iterative calculation of the factorial (i.e. n! = 1 * 2 * ... * n, for n> 0).
+      (Hint: the value for n will be taken as an argument from the command line through which the script is launched,
+      or it will be read with the read command, in case it is not given in the command line.)
+
+Solving idea: use a repetitive structure (for, while or until) and commands for arithmetic calculations (let or expr),
+in a manner similar to the solutions given below in exercise 4, i).
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.2 Write a script to perform the recursive calculation of the factorial.
+      (Hint: the value for n will be taken as an argument from the command line through which the script is launched, or read with the read command,
+      in case it is not given in the command line.)
+
+Solution idea:
+- recursion can be implemented in two different ways, exemplified in the following: either by recursive function call, or by recursive script call;
+- the intermediate value of the recursive calculation can be transmitted from one call to another in several ways, four are shown below
+of these: either by the termination code, or by "taking over", in the caller's command line, the value displayed on the screen to be called, or by a global variable,
+either by a second function / script call parameter.
+
+
+a) Here is a first solution, we write a recursive function and return the result calculated by a call of the function through the process termination code:
+
+lab4_ex2a.sh:
+==============
+#! / bin / bash
+## recursive factorial calculation
+
+function factorial ()
+{
+    if [$ 1-le 1]
+    then
+return 1
+    else
+let n_1 = $ 1-1
+factorial $ n_1
+let rez = $ 1 * $?
+return $ rez
+    be
+}
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+factorial $ n
+echo "Factorial ($ n) = $?"
+
+Note: the return command nr causes the execution of the function to end, with nr as the termination code. And with the special variable $? we can find out the code
+completion of the last previously executed command / function.
+
+Attention: a function call in bash does not have the same meaning as in C language, i.e. cannot appear as an operand in an expression,
+but can only appear in positions where command names are allowed within a command line, or a line in a command file.
+Basically, the function name is like an "alias" for the command list in the function body.
+
+Note: the process termination code is represented by a single byte, so this solution does not display the correct factorial values
+for n> 5 (because it exceeds the byte).
+
+
+b) The second solution, we use the idea with the recursive function above, but the result calculated by a call of the function is displayed on the screen in the body of the function
+and we recover it out of it by special substitution command:
+
+lab4_ex2b.sh:
+==============
+#! / bin / bash
+## recursive factorial calculation
+
+function factorial ()
+{
+    if [$ 1-le 1]
+    then
+echo 1
+    else
+let n_1 = $ 1-1
+rez = `factorial $ n_1`
+expr $ 1 \ * $ rez
+    be
+}
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+echo -n "Factorial ($ n) ="
+factorial $ n
+
+
+c) The third solution, we also use a recursive function as above, but we transmit the result calculated by a call of the function to the next call
+by means of a second function parameter:
+
+lab4_ex2c.sh:
+==============
+#! / bin / bash
+## recursive calculation of the factorial
+
+function factorial ()
+{
+    if [$ 1-le 1]
+    then
+echo $ 2
+    else
+let n_1 = $ 1-1
+let prod = $ 1 * $ 2
+factorial $ n_1 $ prod
+    be
+}
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+echo -n "Factorial ($ n) ="
+factorial $ n 1
+
+
+d) The fourth solution, also with a recursive function, but the intermediate result calculated by a call of the function we send it to the next call
+via a variable (variable named rez below):
+
+lab4_ex2d.sh:
+==============
+#! / bin / bash
+## recursive calculation of the factorial
+
+function factorial ()
+{
+echo "----- Begin call: arg fact = $ 1 -----" 1> & 2 # informational message, displayed on stderr
+
+    if [$ 1-le 1]
+    then
+      rez = 1
+    else
+      let n_1 = $ 1-1
+      factorial $ n_1
+      let rez = $ 1 * rez
+    be
+
+echo "----- End call: arg fact = $ 1, rez = $ rez -----" 1> & 2 # informational message, displayed on stderr
+}
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+factorial $ n
+echo "Factorial ($ n) = $ rez"
+
+Note: The two echo commands "----- ... -----" that display messages on stderr have only a helper role, so you can see the order of the calls.
+To inhibit the appearance of these messages, simply run this script with the standard error output redirected to the null file, ie:
+UNIX> ./lab4_ex2d.sh nr 2> / dev / null
+
+Similarly, you can add such helpful messages to previous solutions.
+
+
+
+NOTE: The above solutions use a recursive function, i.e. which is re-appealed. Similarly you can write solutions without using functions in which
+the script itself is the one that is re-called.
+
+e) For example, here is a rewrite of the first solution, using a recursive call of the script:
+
+lab4_ex2e.sh:
+==============
+#! / bin / bash
+## recursive calculation of the factorial
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+if [$ n -le 1]
+then
+    exit 1
+else
+    let n_1 = $ n-1
+    bash $ 0 $ n_1 # recursive script call
+    let rez = $ n * $?
+    echo "Factorial ($ n) = $ rez"
+    exit $ rez
+be
+
+Note: it has the same disadvantage as the first solution: the process termination code is represented by a byte, as such this solution does not display
+the correct values ​​of the factorial for n> 5 (because it exceeds the byte).
+
+
+f) Here is a rewrite of the second solution, using a recursive call of the script:
+
+lab4_ex2f.sh:
+==============
+#! / bin / bash
+## recursive calculation of the factorial
+
+if [$ # -eq 0]
+then
+    echo -n "Data n:"
+    read n
+else
+    n = $ 1
+be
+
+if [$ # -no 2]
+then
+    echo -n "Factorial ($ n) ="
+be
+
+if [$ n -le 1]
+then
+    echo 1
+else
+    let n_1 = $ n-1
+    expr $ n \ * $ (bash $ 0 $ n_1 'rec') # recursive call of the script, within a special command substitution expression
+be
+
+#Obs .: the second parameter 'rec' (can be anything) has the role to indicate that we are in a recursive call, not to display the text "Factorial () ="
+
+
+Note: similarly, the other two solutions above can be rewritten with recursive functions, modifying them into scripts that are recursively recursive.
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.3 Write a script that receives a directory as a parameter at the command line and compiles all C ++ source files that are only in this
+      director (not those in his subdirectories). The compilation is done as follows: g ++ file.cpp -a file
+      (Hint: using the basename command you can get the file name without extension: basename file.cpp .cpp displays only 'file' on stdout.)
+
+a) Here is a first solution, using a template of the form * .cpp in the list of words from the for structure, a template that will be interpreted by bash in the known way:
+
+lab3_ex3a.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo "Error: insufficient parameters! You did not specify the directory name."
+    exit
+be
+
+if [! -d $ 1 -o! -r $ 1]
+then
+    echo "Error: $ 1 is not a directory, or you do not have permission to read it!"
+    exit
+be
+
+for source in $ 1 / *. cpp
+do
+    executable = $ 1 / `basename $ source .cpp`.exe # or: you can omit the .exe suffix
+    echo We compile the $ source file obtaining the executable $ executable (in the same directory as the source) ...
+    g ++ $ source -o $ executable
+done
+
+
+b) The second solution, using the find command to generate the list of C ++ source file names in the given directory as a parameter:
+
+lab3_ex3b.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo "Error: insufficient parameters! You did not specify the directory name."
+    exit
+be
+
+if [! -d $ 1 -o! -r $ 1]
+then
+    echo "Error: $ 1 is not a directory, or you do not have permission to read it!"
+    exit
+be
+
+for source in `find $ 1 -maxdepth 1 -name" * .cpp "`
+do
+    base = `basename $ source .cpp`
+    dirn = `dirname $ source`
+    executable = $ dirn "/" $ base
+    echo We compile the $ source file obtaining the executable $ executable ...
+    g ++ $ source -o $ executable
+done
+
+Note: although the exercise did not require it, to compile all the files in the subtree determined by the given directory as a parameter,
+it is enough to remove the "-maxdepth 1" option from the find command in the above script.
+
+
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+Additional exercises:
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Some exercises similar to exercise 1 (i.e. scripts that calculate various values ​​in an iterative manner).
+
+As a result, only one solution will be presented for each of them, with the observation that various equivalent solutions can be given by making different
+logical and / or syntactic changes as in the examples of solutions given below in exercise 4.
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4, i) Write a script to calculate the product n * m by repeated addition (i.e. n * m = n + n + ... + n, m times).
+        (Hint: the values ​​for n and m will be taken as command line arguments to launch the script,
+        or they will be read with the read command, in case they are not given in the command line.)
+
+a) Here is a first solution, using a repetitive structure for and let command for arithmetic calculations:
+
+lab4_ex4a.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -lt 1]
+then
+    echo -n "Enter the first number:"
+    read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo in "Enter the second number:"
+    read m
+else
+    m = $ 2
+be
+
+prod = 0
+for i in `seq 1 $ m`
+do
+    let prod = prod + $ n
+done
+
+echo "The result of the operation $ n * $ m is: $ prod"
+
+
+b) The second solution is an equivalent rewriting of the first solution, using a repetitive structure while instead of for and other small syntactic differences:
+
+lab4_ex4b.sh:
+==============
+
+#! / bin / bash
+
+if test $ # -lt 1
+then
+    echo -n "Enter the first number:"; read n
+else
+    n = $ 1
+be
+
+if test $ # -lt 2; then echo -n "Enter the second number:"; read m; else m = $ 2; be
+
+prod = 0
+k = $ m
+while test $ k -gt 0
+do
+    let prod = prod + n
+    let k = k-1
+done
+
+echo "The result of the operation $ n * $ m is: $ prod"
+
+
+c) The third solution is an equivalent rewriting of the previous solution, with some small syntactic differences (note the short-circuit form
+of arithmetic operators from let commands):
+
+lab4_ex4c.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -lt 1]; then echo -n "Enter the first number:"; read n; else n = $ 1; be
+
+if [$ # -lt 2]; then echo -n "Enter the second number:"; read m; else m = $ 2; be
+
+prod = 0
+k = $ m
+while [$ k -gt 0]
+do
+    let prod + = n
+    let k--
+done
+
+echo "The result of the operation $ n * $ m is: $ prod"
+
+
+d) The fourth solution is an equivalent rewriting of the previous solutions, with some small syntactic differences (see the direct writing
+of arithmetic operations, without let commands, possible due to integer type declarations for those variables):
+
+lab4_ex4d.sh:
+==============
+
+#! / bin / bash
+
+if test $ # -lt 1
+then
+    echo -n "Enter the first number:"; read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo -n "Enter the second number:"; read m
+else
+    m = $ 2
+be
+
+declare -i prod
+declare -i k
+
+prod = 0
+k = 0
+
+while [$ k -lt $ m]
+do
+    prod = prod + $ n
+    k = k + 1
+done
+
+echo "The result of the operation $ n * $ m is: $ prod"
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.4, ii) Write a script to calculate the power n to m by repeated multiplications.
+         (Hint: the values ​​for n and m will be taken as command line arguments to launch the script,
+         or they will be read with the read command, in case they are not given in the command line.)
+
+lab4_ex4ii.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -lt 1]
+then
+    echo in "Enter base:"
+    read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo -n "Enter the exponent (a positive number):"
+    read m
+else
+    m = $ 2
+be
+
+power = 1
+for i in `seq 1 $ m`
+do
+    let power = power * $ n
+done
+
+echo "The result of the operation $ n ^ $ m is: $ power"
+
+Note: we can write other equivalent solutions by simply replacing the + operator with the * operator and initializing with 1 instead of 0
+in the other solutions to solve exercise 4.i) that we discussed above.
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.5 Write a script to calculate the arithmetic mean of n numbers.
+      (Hint: the values ​​for n and n numbers will be taken as arguments to the command line through which the script is launched,
+      or they will be read with the read command, in case they are not given in the command line.)
+
+a) The first solution, the calculation is not accurate (because the let command works only with integers and the operator / makes only integer division):
+
+lab4_ex5a.sh:
+==============
+
+#! / bin / bash
+
+if test $ # -eq 0; then
+  echo "Error: you did not specify a single number"; exit 1
+be
+
+ma = 0
+
+for i in $ *
+do
+    let ma = ma + i
+done
+
+let ma = ma / $ #
+
+echo "The arithmetic mean (rounded to the whole) of the given numbers is: $ ma."
+
+
+b) The second solution, we use the bc command with the -l option for floating point calculations:
+
+lab4_ex5b.sh:
+==============
+
+#! / bin / bash
+
+if test $ # -eq 0; then
+  echo "Error: you did not specify a single number"; exit 1
+be
+
+ma = 0
+
+for i in $ *
+do
+    let ma + = i
+done
+
+echo -n "The arithmetic mean of the given numbers is:"
+echo "scale = 5; $ ma / $ #" | bc -l
+
+#Note: scale = 5 defines the scale variable used by the bc command to work with 5-digit numbers after the comma in this example.
+
+
+c) The third solution, we add to the previous solution the reading of the numbers if they are not given in the command line:
+
+lab4_ex5c.sh:
+==============
+
+#! / bin / bash
+
+ma = 0
+
+if test $ # -eq 0
+then
+    echo -n "Give the length of the sequence of numbers:"
+    read n
+    for i in $ (seq 1 $ n)
+    do
+        echo in "Give the number one:"
+        read no
+        ma = $ (echo $ ma + $ nr | bc)
+    done
+else
+    n = $ #
+    for p in $ @
+    do
+        ma = $ (echo $ ma + $ p | bc)
+    done
+be
+
+echo -n "The arithmetic mean of the given numbers is:"
+echo "scale = 5; $ ma / $ n" | bc -l
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.6 Write a script that calculates the minimum and maximum values ​​of the arguments given at the command line.
+      (Note: Numeric values ​​will be read by the read command, if they are not given on the command line.)
+
+a) The first solution, the minimum and the maximum are calculated by a single traversal of the sequence of numbers:
+
+lab4_ex6a.sh:
+==============
+
+#! / bin / bash
+
+if test $ # -eq 0
+then
+    echo "Error: You did not specify a single number."
+    exit 1
+be
+
+min = $ 1
+max = $ 1
+
+shift
+
+for p in $ @
+do
+    if [$ p -lt $ min]; then min = $ p; be
+
+    if [$ p -gt $ max]; then max = $ p; be
+done
+
+echo "The minimum of the sequence of given numbers is: $ min, and its maximum is: $ max."
+
+
+b) The second solution, we add to the previous solution the reading of the numbers if they are not given in the command line:
+
+lab4_ex6b.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo -n "Give the length of the sequence of numbers:"
+    read n
+    echo -n "Give the first number in the sequence:"
+    read k
+    max = $ k
+    min = $ k
+
+    i = 2
+    while [$ i -le $ n]
+    do
+        echo -n "Give the second number in the sequence:"
+        read k
+        if [$ k -lt $ min]; then min = $ k; be
+        if [$ k -gt $ max]; then max = $ k; be
+
+        let i ++
+    done
+else
+    min = $ 1
+    max = $ 1
+
+    shift
+    for p in $ @
+    do
+        if [$ p -lt $ min]; then min = $ p; be
+        if [$ p -gt $ max]; then max = $ p; be
+    done
+be
+
+echo "The minimum of the sequence of given numbers is: $ min, and its maximum is: $ max."
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.7 Write a script to calculate the value of rank n in the Fibonacci sequence.
+      (Hint: the value for n will be taken as an argument to the command line through which the script is launched,
+      or it will be read by the read command, in case it is not given in the command line.)
+
+lab4_ex7.sh:
+==============
+
+#! / bin / bash
+
+## calculates fiber (n) iteratively
+
+if [$ # -eq 0]
+then
+    echo -n "Give the rank of the term of the Fibonacci string:"; read n
+else
+    n = $ 1
+be
+
+if [$ n -eq 1 -o $ n -eq 2]
+then
+    F = $ n
+else
+    F1 = 1
+    F2 = 2
+    for i in `seq 3 $ n`
+    do
+        let F = $ F1 + $ F2
+        F1 = $ F2
+        F2 = $ F
+    done
+be
+
+echo "The rank term n in the Fibonacci sequence is: $ F"
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.8 Write a script to calculate the numerical value that appears most often, as well as its number of occurrences, in the string
+      of numeric values ​​given as arguments on the command line.
+      (Note: Numeric values ​​will be read by the read command, if they are not given on the command line.)
+
+Solution: Note the use of array variables (how to declare and reference the value of an element in the array) in the following:
+
+lab4_ex8.sh:
+=============
+
+#! / bin / bash
+
+declare -a v # declare v as an array
+
+if [$ # -eq 0]
+then
+    echo in "Give the number of numbers:"
+    read no
+    for i in `seq 1 $ nr`
+    do
+echo in "Data v [$ i]:"
+read v [$ i]
+    done
+else
+    nr = $ #
+    for i in `seq 1 $ nr`
+    do
+v [$ i] = $ 1
+shift
+    done
+be
+
+declare -a ap
+
+for i in `seq 1 $ nr`
+do
+    ap [$ i] = 0
+done
+
+for i in `seq 1 $ nr`
+do
+    for j in `seq 1 $ nr`
+    do
+if [$ {v [i]} -eq $ {v [j]}]
+then
+let ap [$ i] + = 1
+be
+    done
+done
+
+max = $ {ap [1]}
+index = 1
+
+for i in `seq 2 $ nr`
+do
+    if [$ max -lt $ {ap [$ i]}]
+    then
+max = $ {ap [$ i]}
+index = $ i
+    be
+done
+
+echo "The number with the most occurrences is $ {v [$ index]} and has $ {ap [$ index]} occurrences."
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.9 Write a script that calculates C (n, k) (i.e. combinations of n taken k).
+      (Hint: n and k values ​​will be given as arguments in the command line through which the script is launched,
+      or will be read by the read command, in case they are not given in the command line.)
+
+a) The first solution, the calculation is made based on the formula C (n, k) = n! / (k! * (n-k)!)
+
+lab4_ex9a.sh:
+==============
+
+#! / bin / bash
+### calculates C (n, k) i.e. combinations of n taken by k
+
+if [$ # -lt 1]
+then
+    echo -n "Give the number n:"; read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo -n "Give the number k:"; read k
+else
+    k = $ 2
+be
+
+if [$ n -lt $ k]
+then
+    echo "Error: $ n is less than $ k. Calculation impossible!"
+    exit 1
+be
+
+
+function fact ()
+{
+    prod = 1
+    for i in `seq 1 $ 1`
+    do
+let prod = prod * $ i
+    done
+    echo $ prod
+}
+
+# follows the calculation based on the formula C (n, k) = n! / (k! * (n-k)!)
+
+#fact $ n
+nfact = `fact $ n`
+echo "$ n factorial is $ nfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+#fact $ k
+kfact = `fact $ k`
+echo "$ k factorial is $ kfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+let n_k = $ n- $ k
+echo "$ n- $ k is $ n_k" 1> & 2 # troubleshooting message, displayed on stderr
+
+#fact $ n_k
+n_kfact = `fact $ n_k`
+echo "$ n_k factorial is $ n_kfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+denominator = `expr $ kfact \ * $ n_kfact`
+combinatorial = `expr $ nfact / $ denominator`
+echo "Result is C ($ n, $ k) = $ combinatorial"
+
+
+Note: to inhibit the display of troubleshooting messages (i.e. those that display intermediate results),
+the script will run with the standard error output stream redirected to the null file, ie:
+UNIX> ./lab4_ex9a.sh N K 2> / dev / null
+
+
+b) The second solution is similar to the first, except that we did "inline" the calculation performed by the fact () function in the previous solution:
+
+lab4_ex9b.sh:
+==============
+
+#! / bin / bash
+### calculates C (n, k) i.e. combinations of n taken by k
+
+if [$ # -lt 1]
+then
+    echo -n "Give the number n:"; read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo -n "Give the number k:"; read k
+else
+    k = $ 2
+be
+
+if [$ n -lt $ k]
+then
+    echo "Error: $ n is less than $ k. Calculation impossible!"
+    exit 1
+be
+
+
+# follows the calculation based on the formula C (n, k) = n! / (k! * (n-k)!)
+
+#fact $ n
+nfact = 1
+for i in `seq 2 $ n`; do let nfact * = $ i; done
+echo "$ n factorial is $ nfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+#fact $ k
+kfact = 1
+for i in `seq 2 $ k`; do let kfact * = $ i; done
+echo "$ k factorial is $ kfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+let n_k = $ n- $ k
+echo "$ n- $ k is $ n_k" 1> & 2 # troubleshooting message, displayed on stderr
+
+#fact $ n_k
+n_kfact = 1
+for i in `seq 2 $ n_k`; do let n_kfact * = $ i; done
+echo "$ n_k factorial is $ n_kfact" 1> & 2 # troubleshooting message, displayed on stderr
+
+denominator = `expr $ kfact \ * $ n_kfact`
+combinatorial = `expr $ nfact / $ denominator`
+echo "Result is C ($ n, $ k) = $ combinatorial"
+
+
+c) The third solution, the calculation is done with a single cycle, based on the formula n! / (k! * (n-k)!) simplified:
+
+lab4_ex9c.sh:
+==============
+
+#! / bin / bash
+### calculates C (n, k) i.e. combinations of n taken by k
+
+if [$ # -lt 1]
+then
+    echo -n "Give the number n:"; read n
+else
+    n = $ 1
+be
+
+if [$ # -lt 2]
+then
+    echo -n "Give the number k:"; read k
+else
+    k = $ 2
+be
+
+if [$ n -lt $ k]
+then
+    echo "Error: $ n is less than $ k. Calculation impossible!"
+    exit 1
+be
+
+# follows the calculation based on the formula C (n, k) = n! / (k! * (n-k)!) simplify = ((n-k + 1) * (n-k + 2) * ... * n) / (1 * 2 * 3 * ... * k)
+
+declare -i i = 1
+declare -i comb = 1
+declare -i aux
+
+while test $ i -le $ k
+do
+    aux = $ n- $ i + 1
+    comb = $ comb * $ aux / $ i
+    i = $ i + 1
+done
+
+echo "Result is C ($ n, $ k) = $ comb"
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.10 Write a script that will be launched with 1 + N * k + p arguments, where k and p are variables and unknown a priori. The script takes up the first argument
+       in a variable N and calculate the sum of the following arguments taken by N (so the sum of the first N arguments, then the next N numbers and so on,
+       and if at the end there remains a number less than N of arguments, it will only calculate their sum), displaying the values ​​of the amounts on the screen and writing them
+       at the same time in an output.txt file. If it is launched without any parameters, then it will require the entry of a numeric value N and then
+       of other N numeric values ​​(we assume integers), displaying only this first sum as a result.
+       (Hint: man expr and help shift.)
+
+lab4_ex10.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo in "Data N:"
+    read N
+    sum = 0
+    for i in `seq 1 $ N`
+    do
+        echo in "Give the second number:"
+        read no
+        let sum + = no
+    done
+    echo "The sum of the $ N numbers is: $ sum"
+else
+    N = $ 1
+    shift
+    j = 0
+    echo $ N> output.txt # reset output file
+
+    while [$ # -ge $ N]
+    do
+        sum = 0
+        let j ++
+        for i in `seq 1 $ N`
+        do
+            let sum + = $ 1
+            shift
+        done
+        echo "The sum of the $ j sequence of $ N numbers is: $ sum"
+        echo "The sum of the $ n sequence of $ N numbers is: $ sum" >> output.txt
+    done
+
+    sum = 0
+    p = $ #
+    for i in `seq 1 $ p`
+    do
+let sum + = $ 1
+shift
+    done
+    echo "The sum of the last sequence (the remaining $ p numbers) is: $ sum"
+    echo "The sum of the last sequence (the remaining $ p numbers) is: $ sum" >> output.txt
+be
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.11 Write a script that, for a user specified by his UID given as a parameter on the command line, to display
+       his real name (and not his username), as well as the names of all the groups he belongs to.
+       (Hint: to get the required information, you can use the id command and / or process the / etc / passwd and / etc / group files.)
+
+a) First solution, using the information from the / etc / passwd and / etc / group files:
+
+lab3_ex11a.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo "Error: insufficient parameters! You did not specify the UID."
+    exit
+be
+
+cuv = ": $ 1:"
+line = `grep $ cuv / etc / passwd`
+if [$? -eq 0]
+then
+    real_name = `echo $ line | cut -d: -f5 | cut -d, -f1`
+    echo Real name: $ real_name
+
+    account_name = `echo $ line | cut -d: -f1`
+    # echo Account name: $ account_name
+
+    gid_principal = `echo $ line | cut -d: -f4`
+    grup_principal = `grep: $ gid_principal: / etc / group | cut -d: -f1`
+    echo The main group it belongs to: $ main_group
+
+    secondary_groups = `grep -w $ account_name / etc / group | cut -d: -f1`
+    echo The secondary groups it belongs to: $ secondary_groups
+else
+    echo Error: There is no user with $ 1 as UID.
+be
+
+Note that we look up the numeric values ​​nnn for UID and GID with templates of the form: nnn:, because otherwise if we use as a template
+only nnn the grep command could select other lines of text, namely those in which nnn appears as a subword in a longer sequence of digits.
+And we search for the account name with grep -w for the same reason, without the -w option the grep command could select other lines of text, namely
+those in which the account name appears as a subword in a longer word.
+
+
+b) The second solution is an equivalent rewriting of the first solution, without using variables to store the intermediate results:
+
+lab3_ex11b.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo "Error: insufficient parameters! You did not specify the UID."
+    exit
+be
+
+grep ": $ 1:" / etc / passwd> / dev / null
+if [$? -eq 0]
+then
+    echo Real name:
+    grep ": $ 1:" / etc / passwd | cut -d: -f5 | cut -d, -f1
+
+    # echo -n Account Name:
+    # grep ": $ 1:" / etc / passwd | cut -d: -f1
+
+    echo in the main group to which it belongs:
+    grep: `grep": $ 1: "/ etc / passwd | cut -d: -f4`: / etc / group | cut -d: -f1
+
+    echo in the secondary groups to which it belongs:
+    grep -w `grep": $ 1: "/ etc / passwd | cut -d: -f1` / etc / group | cut -d: -f1
+else
+    echo Error: There is no user with $ 1 as UID.
+be
+
+
+c) The third solution is another equivalent rewrite of the first solution, but this time we use the id command instead of the / etc / group file:
+
+lab3_ex11c.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo "Error: insufficient parameters! You did not specify the UID."
+    exit
+be
+
+cuv = ": $ 1:"
+line = `grep $ cuv / etc / passwd`
+if [$? -eq 0]
+then
+    real_name = `echo $ line | cut -d: -f5 | cut -d, -f1`
+    echo Real name: $ real_name
+
+    account_name = `echo $ line | cut -d: -f1`
+    # echo Account name: $ account_name
+
+    echo -n The groups it belongs to:
+    id -Gn $ account_name
+else
+    echo Error: There is no user with $ 1 as UID.
+be
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
+
+Ex.12 Write a script that shows which of the users are students and whose account name starts with a given letter,
+       have web pages on the fenrir server.
+       (Hint: test the existence and visibility for everyone of one of the index.htm or index.html or index.php files,
+       what should be in the html subdirectory in the home directory of the user who has the webpage.)
+
+a) A first solution idea: we generate the list of student account names (see an exercise from the previous lab) and filter it by the first letter,
+then we "look" (i.e. test) to see if we have the right to read in the html directory of each for at least one of the specified files.
+
+lab4_ex12a.sh:
+==============
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo -n "Give the first letter of the names:"; read letter
+else
+    letter = $ 1
+be
+
+list = `grep: 202: / etc / passwd | grep ^ $ litera | cut -f1 -d: `
+
+for user in $ list
+do
+    dir_html_user = / fenrir / studs / $ user / html
+
+    if test -r $ dir_html_user / index.html -o -r $ dir_html_user / index.htm -o -r $ dir_html_user / index.php
+    then
+echo $ user has the web page "(accessible at http://students.info.uaic.ro/~"$user"). "
+    be
+done
+
+Important Note: This solution will display a small number of students with the webpage, although most students have a webpage.
+The explanation is that this script checks if student X (the one running the script) has access to those index files of
+to each student Y and displays Y's name if so. But X and Y are colleagues in the studs group, and having a website means
+have one of those index files accessible to the Apache HTTP server, which is a program running as root, so it falls into the category
+others for the rights specified by Y on its index files. In other words, any Y student who has set his or her 604 rights on
+the index file. {html, htm, php}, will have that file accessible to the Apache HTTP server, but not to group colleagues.
+
+
+b) The second solution idea: we try to test with find ... -perm ... if any of those index files have readability for
+others (and therefore will be accessible to the Apache HTTP server), regardless of whether or not group colleagues have the right to read.
+
+lab4_ex12b.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo -n "Give the first letter of the names:"; read letter
+else
+    letter = $ 1
+be
+
+list = `grep: 202: / etc / passwd | grep ^ $ litera | cut -f1 -d: `
+
+for user in $ list
+do
+    dir_html_user = / fenrir / studs / $ user / html
+
+    if test -x $ dir_html_user
+    then
+find $ dir_html_user -maxdepth 1 \ (-name "index.html" -o -name "index.htm" -o -name "index.php" \) -perm / o + r \
+-exec echo $ user has a web page \ {} "(accessible at http://students.info.uaic.ro/~"$user"). " \; 2> / dev / null
+    else
+if test `id -g` -eq` id -g $ user`
+then
+            # Note: being group colleagues and not having access to $ user's html directory,
+            # cannot determine if the HTTP server has access rights
+            echo "I can't determine if $ user has a webpage or not."
+# else
+# echo $ user does not have a website.
+be
+    be
+done
+
+Important note: so even this solution does not give us the complete list of students who have a web page, namely for those students Y
+who have set their 701 form rights on the home directory and / or on the html subdirectory, any command (test ..., find ..., state ..., etc.)
+would try to use student X, the command will not be able to access the index file in order to test its access rights or existence.
+
+Conclusion: file access rights are an important protection mechanism, which guarantees "filtering" access (i.e. allowing
+only of some of them and the prohibition of others) to a file in accordance with the wishes of the owner.
+
+In the present case, in order to be able to "see" the existence of the "hidden" pages of those students who have been denied access to their colleagues
+group, but left it allowed for others to be accessible to the Apache HTTP server, the solution is as follows:
+
+
+c) The third solution idea: student X tries to access the pages of student Y not through various commands run having him as owner
+of the process, but by a command that runs on behalf of a system account, for example, so that it does not fall within Y's group colleagues.
+
+One possible command is to invoke the Apache HTTP server, which is running as root. The invocation can be done through a browser mode
+text, which will run on behalf of X, will ask the Apache HTTP server to deliver the page continuum from the http address specified in the browser.
+The actual file of that page will be accessed in the file system not by the browser process run by student X, but by the process
+Apache HTTP server, and so we can "see" the web pages if they exist (and this, obviously, without violating the specified access rights
+by the owners of the web pages, for the situations mentioned above).
+
+lab4_ex12c.sh:
+==============
+
+#! / bin / bash
+
+if [$ # -eq 0]
+then
+    echo -n "Give the first letter of the names:"; read letter
+else
+    letter = $ 1
+be
+
+list = `grep: 202: / etc / passwd | grep ^ $ litera | cut -f1 -d: `
+
+for user in $ list
+do
+    adr_http_user = "http://students.info.uaic.ro/~" $ user
+    HtmlNotFound = `links -dump $ adr_http_user / index.html | grep -c "Error 404" `
+    HtmNotFound = `links -dump $ adr_http_user / index.htm | grep -c "Error 404" `
+    PhpNotFound = `links -dump $ adr_http_user / index.php | grep -c "Error 404" `
+
+    if test $ HtmlNotFound -eq 0 -o $ HtmNotFound -eq 0 -o $ PhpNotFound -eq 0
+    then
+echo $ user has the web page "(accessible at http://students.info.uaic.ro/~"$user"). "
+    else
+echo $ user does not have a website.
+    be
+done
+
+
+<! ------------------------------------------------ -------------------------------------------------- -------------------------------------------------- ->
